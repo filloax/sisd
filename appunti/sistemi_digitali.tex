@@ -27,8 +27,93 @@
 	\tableofcontents
     \thispagestyle{empty}
 
+    \chapter{Intro}
+
+    Versione attuale del doc: trascrizione videolezioni circa, da
+    mettere meglio a posto in seguito
+
+    \section{22 settembre 2021}
+
+    Scopo del corso: introduzione a sistemi embedded
+
+    Diverse famiglie: risorse limitate con meno consumo, o viceversa
+
+    Metodologie di sviluppo per questi dispositivi
+
+    Più vicino a hardware con linguaggi di basso o alto livello, 
+    o anche smartphone con linguaggi di più alto livello
+
+    Si userà Python, linguaggio ad oggi più utilizzato (doubt)
+
+    In contesto anche applicativo: usato in applicazioni reali
+
+    Modulo 1: studio dispositivi (come FPGA) su cui si possono usare 
+    linguaggi di basso livello, vengono usati nel corso framework di 
+    più alto livello come HLS, che usa variante di C/C++, non Verilog e 
+    VHDL che sarebbero molto più vicini all'hardware
+
+        Inoltre si definiscono modalità di calcolo / progetto del sistema
+        stesso in modulo 1
+
+    Modulo 2: come usare architetture esistenti, e anche board con bridge 
+    in Python per manipolare hardware sottostante
+
+    Python è interpretato ed è meno performante di C, avendo più overhead
+
+    Info esame
+
+    esame MASSIMO 2 VOLTE
+
+    \subsubsection{Sistemi Embedded}
+
+    Sistemi digitali includono tutti i dispositivi a ogni livello di consumo; i
+    \textbf{sistemi embedded} sono compatti e a basso consumo energetico; quindi, 
+    la complessità delle funzioni da svolgere è un fattore limitante, dovendo spesso
+    gestire una batteria limitata, e evitare altri problemi come surriscaldamento in 
+    base al caso d'uso.
+
+    Board: scheda con diversi accessori, con un piccolo dispositivo centrale. 
+    Più specializzata, architettura progettata ad hoc per la funzione. Hanno 
+    comunque delle librerie per interfacciare con accessori in usecase comuni 
+    (fotocamere, usb, ecc.).
+
+    Alcuni esempi di dispositivi:
+
+    \begin{itemize}
+        \item Robot di pulizia casalinga, con software di navigazione in base
+            a sensori.
+        \item Occhiali per persone ipovedenti, con fotocamera che elabora informazioni 
+            per fornire info su semafori, testo e altro in forma audio, che necessita 
+            di lunga autonomia e limitazione del calore.
+        \item Droni contengono sistema embedded per ricevere il controllo remoto e tradurlo
+            in movimento delle eliche.
+        \item Sblocco del telefono con fotocamera: gestione batteria, fotocamera deve rimanere in 
+            "semi-idle" per poter rilevare volto, senza consumare troppa batteria.
+    \end{itemize}
+
+    Discorso di bilanciamento tra ottimizzare tempo performance mettendo cose in memoria, 
+    consumando però più memoria
+
+    Computer vision: elaborazione immagini. La mole di dati da elaborare può essere 
+            molto grande, essendo matrici. Spesso basato su machine learning. 
+            Esiste hardware dedicato al processamento di immagini.
+
+    Elaborazione di stream video: mole di dati dipende da framerate oltre che da risoluzione
+
+    Due strategie viste nel corso per elaborare video/immagini:
+
+    \begin{itemize}
+        \item Modulo 1: Board con ARM + FPGA, paradigma di programmazione classico di basso livello,
+            anche con astrazione via Python in certi casi. Architettura progettata apposta per 
+            il problema. Non general purpose, programmazione più complessa.
+        \item Modulo 2: Architettura hardware già progettata e immutabile (smartphone, GPU), con programmazione
+            e tool di più alto livello, più simili a PC desktop. Controllo sull'hardware limitato 
+            da API sul dispositivo, e quindi limite alla complessità dei programmi dettato da esse.
+    \end{itemize}
+
     \chapter{Modulo 1}
     
     \chapter{Modulo 2}
     
+
 \end{document}
