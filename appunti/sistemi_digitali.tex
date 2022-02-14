@@ -114,6 +114,92 @@
     \chapter{Modulo 1}
     
     \chapter{Modulo 2}
+
+    \section{06 dicembre 2021}
+
+    \textbf{Introduzione al Deep Learning}
+
+    Vedremo una panoramica sul mondo del deep learning,
+    in particolare dal punto di vista dello sviluppatore,
+    senza soffermarsi troppo sui dettagli teorici.
+
+    Due framework principali: Tensorflow e PyTorch.
+
+    Due strade possibili:
+        \begin{itemize}
+        \item utilizzare una rete neurale
+        già addestrata, integrandola all'interno del proprio
+        progetto software, oppure
+        \item addestrare autonomamente una rete neurale per poi
+        andarla ad utilizzare 
+        \end{itemize}
+
+    Per deep learning si intende una famiglia di metodi
+    basati su reti neurali che tramite l'apprendimento da
+    insiemi di dati etichettati possono consentire di risolvere
+    problemi generalizzati su un qualsiasi insieme di dati.
     
+    Teorizzati inizialmente negli anni '80, hanno trovato
+    ampia diffusione solo in tempi recenti, quando è stato
+    possibile soddisfare due requisiti fondamentali per l'utilizzo
+    di reti neurali:
+    \begin{itemize}
+        \item Elevata potenza di calcolo
+        \item Grandi quantità di dati per l'addestramento 
+    \end{itemize}
+
+    Le reti neurali convoluzionali (CNNs) sono tra i framework più popolari, 
+    consentono di risolvere problemi di classificazione e regressione nell'ambito dell'elaborazione delle immagini.
+    Due fasi: Training e Testing
+
+    Una rete neurale è definita da una sequenza di moduli
+    (livelli), ciascuno caratterizzato da un insieme di pesi (ognuno associato ad un neurone). 
+    I pesi definiscono il comportamento di ogni modulo e di conseguenza della rete nella sua interezza. 
+    Durante la fase di Training, la rete processa il dato fornito in input (nel nostro caso un'immagine)
+    e predice un risultato. Tale risultato viene confrontato con l'etichetta reale assegnata all'immagine. 
+    Misurando la differenza tra il valore predetto dalla rete e l'etichetta possiamo quantificare l'errore 
+    ed ottimizzare la rete per minimizzarlo, in particolare aggiustando i valori dei vari pesi della rete.
+
+    La sequenza di moduli che definiscono la rete può essere percorsa
+    in avanti (\textbf{forward pass}) per ottenere l'output a partire dall'input,
+    oppure all'indietro (\textbf{backward pass}) per ottenere l'espressione
+    dell'uscita in funzione dei pesi della rete (poiché l'uscita è funzione composta
+    delle uscite dei singoli moduli).
+
+    A livello matematico, la differenza tra il risultato della rete e l'etichetta viene modellata tramite una funzione L 
+    (\textit{loss function}), calcolata come la differenza tra l'output (funzione degli N pesi della rete) e l'etichetta. 
+    La differenza viene minimizzata muovendo i pesi in direzione opposta rispetto al gradiente della funzione L.
+
+    *espressione matematica del peso $\theta_j$*
+
+    Framework per il deep learning quali Tensorflow e PyTorch gestiscono automaticamente 
+    l'aggiornamento dei pesi nella fase di training della rete.
+
+    *esempi di problemi risolvibili con una CNN: object detection, instance segmentation, depth estimation ecc.*
+
+    Vedremo ora il funzionamento dei due framework citati, mostrando infine
+    come sia possibile eseguire il porting su dispositivi mobili (in particolare Android).
+
+    \textbf{Tensorflow}
+
+    Sviluppato da Google, esistono due versioni principali:
+    1.x e 2.x.
+    In Tensorflow 1.x, lo sviluppo del codice era diviso in 
+    due fasi: costruzione del grafo (trainig) ed esecuzione (testing).
+    In Tensorflow 2.x al contrario, non è prevista la separazione tra le due fasi.
+
+    Tensorflow si basa sul concetto di \textbf{tensore}, ovvero
+    un array multidimensionale: array (1-D), matrici (2-D), array di matrici (3-D) ecc.
+    Possiamo pensare ad un'immagine come ad un tensore 3-D (altezza, larghezza e
+    canale RGB).
+
+    La struttura della rete viene rappresentata tramite un \textbf{grafo} unidirezionale,
+    il quale rappresenta l'esatta successione dei layer. Questo consente in modo efficiente
+    sia di percorrere il grafo per ottenere l'output in fase di forward pass,
+    sia di recuperare le dipendenze tra i diversi layer in fase di backward pass.
+    In questo modo si modella la rete tramite un'astrazione ad alto livello.
+
+        
+
 
 \end{document}
