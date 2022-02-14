@@ -111,6 +111,106 @@
             da API sul dispositivo, e quindi limite alla complessità dei programmi dettato da esse.
     \end{itemize}
 
+    \section{24 settembre 2021}
+
+    GPU è progettata per velocizzare operazioni grafiche di processori esistenti; 
+    ARM e FPGA costituiscono un sistema integrato con una acceleratore progettato 
+    apposta per essa, e con la quale si scambia informazioni su una linea molto rapida, 
+    consumando meno energia di una GPU general purpose.
+
+    Alcune problematiche attuali
+
+    Un telefono di fascia medio-alta spesso ha 3-5 fotocamere: questa visuale stereo può
+    essere usata per ottenere diverse informazioni, per esempio una mappa della distanza 
+    di ogni pixel dalla telecamera, o il riconoscimento semantico di diversi oggetti.
+    Questi problemi hanno un consumo di risorse anche alto, e non necessariamente una rete 
+    pensata per un contesto funzionerà bene in altri.
+
+    L'analisi della profondità ha molti usi, anche semplicemente il calcolo dell'occlusione 
+    (oggetti reale davanti che nasconde oggetto virtuale dietro) per realtà aumentata.
+
+    Molti casi comuni sono pensati per essere eseguiti su GPU con consumi molto alti e
+    quindi non adatti a sistemi embedded. Lo scopo è avere reti utilizzabili su sistemi 
+    embedded con prestazioni comparabili (sia framerate/velocità, che accuratezza e qualità).
+
+    Esistono framework di ottimizzazione di sistemi per dispositivi fatti da diversi 
+    produttori (come Apple e Intel): per esempio, un'ottimizzazione comune è evitare 
+    float e usare interi.
+
+    Esempio: adattamento di rete pensata per GPU a FPGA e telefono. Lo scopo è quindi
+    usare questi framework per ottimizzare reti (soprattutto di Deep Learning) a 
+    dispositivi a basso consumo; per algoritmi fatti dal programmatore, l'ottimizzazione 
+    verte più su di lui.
+
+    Un sistema basato su deep learning richiede calcoli anche pesanti, e ha un problema in 
+    base alla disponibilità dei dati di training: se allenato su un contesto specifico, non 
+    sarà in grado di operare su altri contesti. Si cercano di creare in quel caso sistemi che 
+    apprendono dai nuovi dati, aggiustando parametri della rete in base a nuovi ambienti.
+
+    Elaborazione stream video: milioni di pixel su schermo, ognuno elaborabile in diverso modo, 
+    e quindi originalmente GPU nate per questo, ma si presta bene anche per reti neurali.
+
+    Processori ARM hanno minori consumi, inizialmente usati per telefoni, poi introdotti 
+    a PC date le prestazioni comparabili.
+
+    Oggi la frequenza di clock di una CPU è meno importante, visto che comporta consumi più 
+    elevati. Spesso la frequenza è modulata in base al carico ad oggi.
+
+    Alcuni esempi di architettura a consumo ridotto:
+
+    \begin{itemize}
+        \item Movidius Intel: acceleratore per immagini, una sorta di micro-GPU, presente su telefoni 
+        e anche in formato USB.
+    
+        \item JevoIs Smart Machine Vision: anche esso molto piccolo, contiene processore ARM, con 
+        telecamera integrata, lunga autonomia. 
+    
+        \item Jetson Nvidia: sistema con piccola GPU.
+    
+        \item TPU Google: accelera calcoli di reti machine learning, pure qua ARM. Usato da loro per calcoli 
+        correlati invece dei server general purpose, per cose come il riconoscimento vocale ecc.
+        TPU sta per Tensor Processing Unit, è una architettura custom per massimizzare la performance 
+        nei datacenter.
+    
+        \item Brainwave di Microsoft: non architettura custom completamente, ma utilizzando board con FPGA 
+        con design originale della rete. Usato non per training, ma per inferenza di reti.
+    \end{itemize}
+
+    Gli esempi precedenti non sono programmabili a livello di architettura, solo nel software.
+    Negli ultimi anni diversi produttori hanno reso disponibili dei chip, basati su una serie 
+    di processori (solitamente ARM) e un FPGA, che permettono di definire qualunque architettura. 
+    La CPU permette di fare qualunque task, anche se non al meglio, mentre la FPGA è totalmente 
+    progammabile per ottenere uno scopo specifico, accelerando i calcoli. 
+    Addirittura, è possibile definire delle architetture in modo automatico a partire da una descrizione 
+    fornita in C o C++. Lato negativo è quindi richiedere più tempo per definire l'architettura, 
+    rispetto ai sistemi già configurati dei vari produttori.
+
+    RISC-V: serie di istruzioni open-source per CPU RISC, supportato da molte aziende (a parte ARM).
+    Set di istruzioni libero ed estendibile, con un comitato affinchè l'ISA non cambi.
+    ARM come azienda vende progetti, non hardware, anche a aziende rivali. Il suo possibile acquisto 
+    da parte di NVIDIA sta aumentando l'interesse in RISC-V.
+
+    Altri sistemi embedded con architettura non programmabile, linguaggio spesso Python: raspberry, 
+    jetson Nvidia, smartphone, ecc. Con Python, il framework di machine learning più comune è 
+    Tensorflow di Google.
+
+    Sistemi programmabili: un esempio trattato nel corso architettura ZYNQ prodotta da Xilinx, appunto 
+    con dual core ARM e un FPGA, collegati tramite bus ad alta efficienza AXI; possiede inoltra memoria 
+    condivisa tra CPU e FPGA. Su slide presenti le caratteristiche tecniche (PS = Processing System) della 
+    CPU. Usa sistema operativo Linux di base, nel corso si usa OS "bare metal" cioè senza protezioni, molto 
+    basilare. All'avvio una delle CPU decide quale bitstream usare per configurare FPGA. 
+    Altra architettura più recente Ultrascale, con prestazioni elevate e una simile idea generale di 
+    progettazione. Infine, la PYNQ, simile a ZYNQ; si crea l'architettura con linguaggi di alto livello (C) 
+    come con ZYNQ, e su di essa si può scrivere codice con Python. Queste board sono simili a quelle basate su 
+    Xilinx-700 (ZedBoard), ma si può usare un linguaggio di alto livello.
+
+    È possibile simulare queste board su software, nel caso non si posseggano.
+
+    Su slide un esempio di progetto su ZYNQ.
+
+    In conclusione: Modulo 1 basato su architetture custom, Modulo 2 strumenti di ottimizzazione per sfruttare 
+    architetture esistenti.
+
     \chapter{Modulo 1}
     
     \chapter{Modulo 2}
