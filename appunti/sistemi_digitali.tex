@@ -285,21 +285,30 @@
     Sviluppato da Google, esistono due versioni principali:
     1.x e 2.x.
     In Tensorflow 1.x, lo sviluppo del codice era diviso in 
-    due fasi: costruzione del grafo (trainig) ed esecuzione (testing).
+    due fasi: costruzione del grafo ed esecuzione.
     In Tensorflow 2.x al contrario, non è prevista la separazione tra le due fasi.
 
     Tensorflow si basa sul concetto di \textbf{tensore}, ovvero
     un array multidimensionale: array (1-D), matrici (2-D), array di matrici (3-D) ecc.
     Possiamo pensare ad un'immagine come ad un tensore 3-D (altezza, larghezza e
-    canale RGB).
+    canali RGB) e di conseguenza ad un insieme di immagini come un tensore 4-D (numero di immagini, immagine 3-D).
 
     La struttura della rete viene rappresentata tramite un \textbf{grafo} unidirezionale,
-    il quale rappresenta l'esatta successione dei layer. Questo consente in modo efficiente
+    il quale rappresenta l'esatta successione dei layer. 
+    Ogni nodo del grafo rappresenta un layer. Questo consente in modo efficiente
     sia di percorrere il grafo per ottenere l'output in fase di forward pass,
     sia di recuperare le dipendenze tra i diversi layer in fase di backward pass.
     In questo modo si modella la rete tramite un'astrazione ad alto livello.
 
-        
+    Il grafo è un'entità statica: una volta definito non può più essere modificato.
+    Per ottenere l'output della rete è necessario eseguire il grafo precedentemente definito, 
+    a questo scopo -- in Tensorflow 1.x -- dobbiamo utilizzare una \textbf{sessione}. La sessione
+    è l'astrazione che rappresenta un'esecuzione del grafo, in un certo senso
+    è l'esecutore del grafo, poiché si fa carico di produrre il risultato
+    percorrendo il grafo con una forward pass.
 
+    In Tensorflow 2.x è stato rimosso il meccanismo delle sessioni: invocando
+    operazioni sulle variabili, otteniamo direttamente il risultato dell'esecuzione.
+     
 
 \end{document}
