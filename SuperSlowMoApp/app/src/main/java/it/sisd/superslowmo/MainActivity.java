@@ -10,8 +10,10 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import org.pytorch.LiteModuleLoader;
 import org.pytorch.Module;
 import org.pytorch.PyTorchAndroid;
+import org.pytorch.Tensor;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -22,34 +24,43 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 
+import it.sisd.pytorchreimpl.VideoDataset;
+
 public class MainActivity extends AppCompatActivity {
     SlowMo slowMoEvaluator;
+    boolean runningEval;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        createSlowMoEvaluator();
 
+        final Button button = findViewById(R.id.button);
+        button.setOnClickListener(this::buttonOnClick);
+    }
+
+    private void createSlowMoEvaluator() {
         Module flowComp, arbTimeFlowIntrp, backWarp;
-        Bitmap[] frames;
         try {
-            flowComp = PyTorchAndroid.loadModuleFromAsset(getAssets(), "flowComp.pt");
-            arbTimeFlowIntrp = PyTorchAndroid.loadModuleFromAsset(getAssets(), "ArbTimeFlowIntrp.pt");
-            frames = VideoConverter.getFrames(this);
+            flowComp = loadPytorchModule("flowComp.ptl");
+            arbTimeFlowIntrp = loadPytorchModule("ArbTimeFlowIntrp.ptl");
 
-            int resX = frames[0].getWidth(), resY = frames[0].getHeight();
-            backWarp = PyTorchAndroid.loadModuleFromAsset(getAssets(), getBackWarpFileForResolution(resX, resY));
+            VideoDataset<Tensor> videoFrames = SlowMo.createDataset(getApplicationContext(), Constants.IN_FRAMES_DIR);
+
+            backWarp = loadPytorchModule(getBackWarpFileForResolution(videoFrames.getOrigDim().x, videoFrames.getOrigDim().y));
+
+            slowMoEvaluator = new SlowMo(videoFrames, flowComp, arbTimeFlowIntrp, backWarp, this::outString);
         } catch (IOException e) {
             Log.e("SlowMo", "Error reading assets", e);
             // Per evitare errore "variabile potrebbe essere non inizializzata"
             throw new RuntimeException("Error reading assets!", e);
         }
+    }
 
-        slowMoEvaluator = new SlowMo(frames, flowComp, arbTimeFlowIntrp, backWarp, this::outString);
-
-        final Button button = findViewById(R.id.button);
-        button.setOnClickListener(this::buttonOnClick);
+    private Module loadPytorchModule(String assetName) {
+        return LiteModuleLoader.loadModuleFromAsset(getAssets(), assetName);
     }
 
     public void buttonOnClick(View v) {
@@ -58,7 +69,17 @@ public class MainActivity extends AppCompatActivity {
         String out = "Premuto alle " + f.format(time);
         outString(out);
 
-        slowMoEvaluator.doEvaluation();
+        if (!runningEval) {
+            runningEval = true;
+            new Thread() {
+                public void run() {
+                    slowMoEvaluator.doEvaluation();
+                    runningEval = false;
+                }
+            }.start();
+        } else {
+            outString("Already running");
+        }
     }
 
     private void outString(String s) {
@@ -70,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
         // Sostituire con classe a parte? Per ora check hardcoded con unica
         // risoluzione disponibile
         if (x == 1280 && y == 720) {
-            return "flowBackWarp_1280x720.pt";
+            return "flowBackWarp_1280x720.ptl";
         }
 
         throw new IllegalArgumentException("No backwarp model available for resolution " + x + "x" + y);
