@@ -20,6 +20,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -50,7 +51,26 @@ public class MainActivity extends AppCompatActivity {
 
             Module frameInterp = loadPytorchModule(getFrameInterpFileForResolution(videoFrames.getOrigDim().x, videoFrames.getOrigDim().y));
 
-            slowMoEvaluator = new SlowMo(videoFrames, flowCompCat, frameInterp, this::outString);
+            final File outDir = Paths.get(this.getApplicationContext().getFilesDir().getAbsolutePath(), Constants.OUT_FRAMES_DIR)
+                    .toAbsolutePath().toFile();
+
+            if (!outDir.exists()) {
+                outDir.mkdir();
+            }
+
+            slowMoEvaluator = new SlowMo().videoFrames(videoFrames)
+                .flowCompCat(flowCompCat)
+                .frameInterp(frameInterp)
+                .logOut(this::outString)
+                .imageWriter((name, bitmap) -> {
+                    String path = new File(outDir, name).toString();
+                    try (FileOutputStream out = new FileOutputStream(path)) {
+                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, out); // bmp is your Bitmap instance
+                        // PNG is a lossless format, the compression factor (100) is ignored
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                });
         } catch (IOException e) {
             Log.e("SlowMo", "Error reading assets", e);
             // Per evitare errore "variabile potrebbe essere non inizializzata"
@@ -70,10 +90,14 @@ public class MainActivity extends AppCompatActivity {
 
         if (!runningEval) {
             runningEval = true;
+            final File outDir = Paths.get(this.getApplicationContext().getFilesDir().getAbsolutePath(), Constants.OUT_FRAMES_DIR)
+                    .toAbsolutePath().toFile();
+            outString("Saving to dir " + outDir);
             new Thread() {
                 public void run() {
                     slowMoEvaluator.doEvaluation();
                     runningEval = false;
+                    outString("Saved to dir " + outDir);
                 }
             }.start();
         } else {

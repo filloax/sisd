@@ -20,24 +20,24 @@ import it.sisd.pytorchreimpl.VideoDataset;
 
 public class SlowMo {
     private VideoDataset<Tensor> videoFrames;
-    private Bitmap[] outFrames;
     private Module flowCompCat;
 //    private Module arbTimeFlowIntrp;
     private Module frameInterp;
 
+    private IImageWriter imageWriter;
+
     private Consumer<String> logOut;
 
-    public SlowMo(VideoDataset<Tensor> videoFrames, Module flowCompCat, Module frameInterp, Consumer<String> logOut) {
+    public SlowMo(VideoDataset<Tensor> videoFrames, Module flowCompCat, Module frameInterp, IImageWriter imageWriter, Consumer<String> logOut) {
         this.videoFrames = videoFrames;
-        this.outFrames = null;
         this.flowCompCat = flowCompCat;
 //        this.arbTimeFlowIntrp = arbTimeFlowIntrp;
         this.frameInterp = frameInterp;
+        this.imageWriter = imageWriter;
         this.logOut = logOut;
     }
 
-    public SlowMo(VideoDataset<Tensor> videoFrames, Module flowComp, Module frameInterp) {
-        this(videoFrames, flowComp, frameInterp, null);
+    public SlowMo() {
     }
 
     public static VideoDataset<Tensor> createDataset(Context context, String framesdir) throws IOException {
@@ -52,47 +52,31 @@ public class SlowMo {
         int iter = 0;
         int frameCounter = 1;
         int scaleFactor = 2;
-        int batch_size = 1;
+//        int batch_size = 1;
 
         for (Pair<Tensor, Tensor> sample : videoFrames) {
             IValue I0 = IValue.from(sample.first), I1 = IValue.from(sample.second);
 
             log("=== Doing sample " + (iter++) + " ===");
-            //Tensor catFrames = TensorUtils.cat(sample.first, sample.second, 1);
-            float[] printData = sample.first.getDataAsFloatArray(); // DEBUG
-            log(
-                    String.format(Locale.getDefault(), "Pre flowout: shape %s, first 3 values (%.2f %.2f %.2f)",
-                            Arrays.toString(sample.first.shape()),
-                            printData[0], printData[1], printData[2]
-                    )
-            );
+
             IValue[] flowOutTuple = flowCompCat.forward(I0, I1).toTuple();
             IValue I_F_0_1 = flowOutTuple[0], I_F_1_0 = flowOutTuple[1];
             Tensor F_0_1 = I_F_0_1.toTensor();
             Tensor F_1_0 = I_F_1_0.toTensor();
 
-            printData = F_0_1.getDataAsFloatArray(); // DEBUG
-            log(
-                    String.format(Locale.getDefault(), "Post flowout F_0_1: shape %s, first 3 values %.2f %.2f %.2f",
-                    Arrays.toString(F_1_0.shape()), printData[0], printData[1], printData[2])
-            );
-            printData = F_1_0.getDataAsFloatArray(); // DEBUG
-            log(
-                    String.format(Locale.getDefault(), "Post flowout F_1_0: shape %s, first 3 values %.2f %.2f %.2f",
-                    Arrays.toString(F_1_0.shape()), printData[0], printData[1], printData[2])
-            );
+            log("\t Did flowout");
 
             // Save reference frames as image
-            // TODO
+            // Possibile ottimizzazione: usare direttamente il file originale senza crearne di nuovi
+            resizeAndSaveFrame(frameCounter, sample.first);
+
+            log(String.format(Locale.getDefault(), "\tSaved reference frame %05d.png", frameCounter));
 
             frameCounter++;
 
             for (int intermediateIndex = 1; intermediateIndex < scaleFactor; intermediateIndex ++) {
                 double t = intermediateIndex / (double) scaleFactor;
                 IValue I_t = IValue.from(t);
-                // Workaround: passare IValue creati da non tensori in ingresso a forward crasha
-                // con ArrayIndexOutOfBoundsException: vector, probabilmente bug di Pytorch?
-//                IValue I_t = IValue.from(Tensor.fromBlob(new double[]{t}, new long[]{1}));
 
                 IValue I_Ft_p = frameInterp.forward(
                         I_t,
@@ -103,31 +87,67 @@ public class SlowMo {
                 );
                 Tensor Ft_p = I_Ft_p.toTensor();
 
-                // Save interpolated frame as image
-                // TODO
+                log(String.format(Locale.getDefault(), "\tInterpolated frame %d|%d", intermediateIndex, frameCounter));
 
-                printData = Ft_p.getDataAsFloatArray(); // DEBUG
-                log(
-                        String.format(Locale.getDefault(), "Interpolated frame %d|%d: shape %s, first 3 values %.2f %.2f %.2f",
-                                intermediateIndex, frameCounter,
-                                Arrays.toString(Ft_p.shape()),
-                                printData[0], printData[1], printData[2]
-                        )
-                );
+                // Save interpolated frame as image
+                resizeAndSaveFrame( frameCounter, Ft_p);
+
+                log(String.format(Locale.getDefault(), "\tSaved frame %05d.png", frameCounter));
 
                 frameCounter ++;
             }
 
-            frameCounter += scaleFactor * (batch_size - 1);
+//            frameCounter += scaleFactor * (batch_size - 1);
         }
 
         log("Ended SuperSloMo eval");
     }
 
+    private void resizeAndSaveFrame(int sequenceNum, Tensor frameTensor) {
+        /*
+        (TP(frame0[batchIndex].detach()))
+          .resize(videoFrames.origDim, Image.BILINEAR)
+          .save(os.path.join(outputPath, str(frameCounter + args.sf * batchIndex) + ".png"))
+         */
+        int dimy = (int) frameTensor.shape()[2];
+        int dimx = (int) frameTensor.shape()[3];
+        String name = String.format("%05d.png", sequenceNum);
+
+        log(dimx + " " + dimy);
+
+        // Possibile ottimizzazione: resize insieme a conversione a bitmap
+        Bitmap bm1 = TensorUtils.bitmapFromRGBImageAsFloatArray(frameTensor.getDataAsFloatArray(), dimx, dimy);
+        imageWriter.writeImage(name, Bitmap.createScaledBitmap(bm1, videoFrames.getOrigDim().x, videoFrames.getOrigDim().y, true));
+    }
+
     private void log(String s) {
         if (logOut != null)
             logOut.accept(s);
-        else
-            Log.println(Log.INFO, "SlowMo", s);
+        Log.println(Log.INFO, "SlowMo", s);
+    }
+
+    public SlowMo videoFrames(VideoDataset<Tensor> videoFrames) {
+        this.videoFrames = videoFrames;
+        return this;
+    }
+
+    public SlowMo flowCompCat(Module flowCompCat) {
+        this.flowCompCat = flowCompCat;
+        return this;
+    }
+
+    public SlowMo frameInterp(Module frameInterp) {
+        this.frameInterp = frameInterp;
+        return this;
+    }
+
+    public SlowMo imageWriter(IImageWriter imageWriter) {
+        this.imageWriter = imageWriter;
+        return this;
+    }
+
+    public SlowMo logOut(Consumer<String> logOut) {
+        this.logOut = logOut;
+        return this;
     }
 }

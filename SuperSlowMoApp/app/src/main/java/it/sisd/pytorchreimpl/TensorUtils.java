@@ -1,5 +1,10 @@
 package it.sisd.pytorchreimpl;
 
+import android.annotation.SuppressLint;
+import android.graphics.Bitmap;
+import android.graphics.Color;
+import android.util.Log;
+
 import org.pytorch.IValue;
 import org.pytorch.Module;
 import org.pytorch.Tensor;
@@ -7,6 +12,40 @@ import org.pytorch.Tensor;
 import java.util.Arrays;
 
 public class TensorUtils {
+    @SuppressLint("DefaultLocale")
+    public static Bitmap bitmapFromRGBImageAsFloatArray(float[] data, int width, int height){
+        Bitmap bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+
+        float max = 0;
+        float min = 999999;
+
+        for(float f: data){
+            if(f > max){
+                max = f;
+            }
+            if(f < min){
+                min = f;
+            }
+        }
+
+        int delta = (int)(max - min);
+
+        for (int i = 0; i < width * height; i++) {
+            int r = (int) ((data[i] - min)/delta*255.0f);
+            int g = (int) ((data[i + width * height] - min) / delta*255.0f);
+            int b = (int) ((data[i + width * height * 2] - min) / delta*255.0f);
+
+            int x = i % width;
+            int y = i / width;
+
+//            Log.d("SlowMo", String.format("%d: %d, %d (%d, %d)", i, x, y, width, height));
+
+            int color = Color.rgb(r, g, b);
+            bmp.setPixel(x, y, color);
+        }
+        return bmp;
+    }
+
     public static Tensor cat(Tensor tensor1, Tensor tensor2, int dim) {
         return cat(new Tensor[]{tensor1, tensor2}, dim);
     }

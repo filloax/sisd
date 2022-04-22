@@ -18,6 +18,9 @@ public class VideoDataset<T> extends Dataset<Pair<T, T>> {
     private Size origDim;
     private Size dim;
 
+    // Dimensions will be scaled to be multiples of this number
+    public static final int DIM_UNIT = 32;
+
     protected VideoDataset(IImageLoader imageLoader, String root, String[] framePaths, Function<Bitmap, T> transform, Size origDim, Size dim) {
         this.imageLoader = imageLoader;
         this.root = root;
@@ -55,7 +58,7 @@ public class VideoDataset<T> extends Dataset<Pair<T, T>> {
         IImageLoader imageLoader = new ContextImageLoader(context);
         Bitmap firstFrame = imageLoader.loadImage(framePaths[0]);
         Size origDim = new Size(firstFrame.getWidth(), firstFrame.getHeight());
-        Size dim = new Size(Math.floorDiv(origDim.x, 32) * 32, Math.floorDiv(origDim.y, 32) * 32);
+        Size dim = new Size(Math.floorDiv(origDim.x, DIM_UNIT) * DIM_UNIT, Math.floorDiv(origDim.y, DIM_UNIT) * DIM_UNIT);
 
         return new VideoDataset<>(imageLoader, root, framePaths, transform, origDim, dim);
     }
