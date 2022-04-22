@@ -42,16 +42,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void createSlowMoEvaluator() {
-        Module flowComp, arbTimeFlowIntrp, backWarp;
         try {
-            flowComp = loadPytorchModule("flowComp.ptl");
-            arbTimeFlowIntrp = loadPytorchModule("ArbTimeFlowIntrp.ptl");
+            Module flowCompCat = loadPytorchModule("flowCompCat.ptl");
+//            Module arbTimeFlowIntrp = loadPytorchModule("ArbTimeFlowIntrp.ptl");
 
             VideoDataset<Tensor> videoFrames = SlowMo.createDataset(getApplicationContext(), Constants.IN_FRAMES_DIR);
 
-            backWarp = loadPytorchModule(getBackWarpFileForResolution(videoFrames.getOrigDim().x, videoFrames.getOrigDim().y));
+            Module frameInterp = loadPytorchModule(getFrameInterpFileForResolution(videoFrames.getOrigDim().x, videoFrames.getOrigDim().y));
 
-            slowMoEvaluator = new SlowMo(videoFrames, flowComp, arbTimeFlowIntrp, backWarp, this::outString);
+            slowMoEvaluator = new SlowMo(videoFrames, flowCompCat, frameInterp, this::outString);
         } catch (IOException e) {
             Log.e("SlowMo", "Error reading assets", e);
             // Per evitare errore "variabile potrebbe essere non inizializzata"
@@ -87,14 +86,17 @@ public class MainActivity extends AppCompatActivity {
         tv.setText(s + "\n" + tv.getText());
     }
 
-    private static String getBackWarpFileForResolution(int x, int y) {
-        // Sostituire con classe a parte? Per ora check hardcoded con unica
-        // risoluzione disponibile
-        if (x == 1280 && y == 720) {
-            return "flowBackWarp_1280x720.ptl";
+    private static String getFrameInterpFileForResolution(int x, int y) {
+        // Sostituire con classe a parte? Per ora check hardcoded con uniche
+        // risoluzioni disponibili
+        String prefix = "frameInterp_";
+        if (x == 320 && y == 180) {
+            return prefix + "320x160.ptl";
+        } else if (x == 1280 && y == 720) {
+            return prefix + "1280x704.ptl";
         }
 
-        throw new IllegalArgumentException("No backwarp model available for resolution " + x + "x" + y);
+        throw new IllegalArgumentException("No frame interp model available for resolution " + x + "x" + y);
     }
 
     public static String assetFilePath(Context context, String assetName) throws IOException {
