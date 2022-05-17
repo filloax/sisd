@@ -2,6 +2,7 @@ package it.sisd.superslowmo;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.Bundle;
@@ -27,60 +28,76 @@ import it.sisd.pytorchreimpl.VideoDataset;
 
 public class SlomoActivity extends AppCompatActivity {
     SlowMo slowMoEvaluator;
-    boolean runningEval;
+    boolean runningEval = false;
+    boolean loadedSlowMoEvaluator = false;
+    Button startButton = null;
+    String selectedFile = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_slomo);
 
-        createSlowMoEvaluator();
+        startButton = findViewById(R.id.startElabButton);
+        startButton.setEnabled(false);
+        startButton.setOnClickListener(this::startElabOnClick);
 
-        final Button button = findViewById(R.id.button);
-        button.setOnClickListener(this::buttonOnClick);
+        final Button chooseFileButton = findViewById(R.id.fileSelectButton);
+
+        createSlowMoEvaluator();
     }
 
     private void createSlowMoEvaluator() {
-        try {
-            Module flowCompCat = loadPytorchModule("flowCompCat.ptl");
-//            Module arbTimeFlowIntrp = loadPytorchModule("ArbTimeFlowIntrp.ptl");
+        outString("Initializing SlowMo service...");
 
-            VideoDataset<Tensor> videoFrames = SlowMo.createDataset(getApplicationContext(), Constants.IN_FRAMES_DIR);
+        new Thread( () -> {
+            try {
+                Module flowCompCat = loadPytorchModule("flowCompCat.ptl");
+    //            Module arbTimeFlowIntrp = loadPytorchModule("ArbTimeFlowIntrp.ptl");
 
-            Module frameInterp = loadPytorchModule(getFrameInterpFileForResolution(videoFrames.getOrigDim().x, videoFrames.getOrigDim().y));
+                VideoDataset<Tensor> videoFrames = SlowMo.createDataset(getApplicationContext(), Constants.IN_FRAMES_DIR);
 
-            final File outDir = Paths.get(this.getApplicationContext().getFilesDir().getAbsolutePath(), Constants.OUT_FRAMES_DIR)
-                    .toAbsolutePath().toFile();
+                Module frameInterp = loadPytorchModule(getFrameInterpFileForResolution(videoFrames.getOrigDim().x, videoFrames.getOrigDim().y));
 
-            if (!outDir.exists()) {
-                outDir.mkdir();
+                final File outDir = Paths.get(this.getApplicationContext().getFilesDir().getAbsolutePath(), Constants.OUT_FRAMES_DIR)
+                        .toAbsolutePath().toFile();
+
+                if (!outDir.exists()) {
+                    outDir.mkdir();
+                }
+
+                slowMoEvaluator = new SlowMo().videoFrames(videoFrames)
+                        .flowCompCat(flowCompCat)
+                        .frameInterp(frameInterp)
+                        .logOut(this::outString)
+                        .imageWriter((name, bitmap) -> {
+                            String path = new File(outDir, name).toString();
+                            try (FileOutputStream out = new FileOutputStream(path)) {
+                                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out); // bmp is your Bitmap instance
+                                // PNG is a lossless format, the compression factor (100) is ignored
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        });
+
+                runOnUiThread(() -> startButton.setEnabled(true));
+                loadedSlowMoEvaluator = true;
+                outString("Loaded SlowMo service!");
+            } catch (IOException e) {
+                Log.e("SlowMo", "Error reading assets", e);
+                outString("Error reading assets, cannot start");
             }
-
-            slowMoEvaluator = new SlowMo().videoFrames(videoFrames)
-                .flowCompCat(flowCompCat)
-                .frameInterp(frameInterp)
-                .logOut(this::outString)
-                .imageWriter((name, bitmap) -> {
-                    String path = new File(outDir, name).toString();
-                    try (FileOutputStream out = new FileOutputStream(path)) {
-                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, out); // bmp is your Bitmap instance
-                        // PNG is a lossless format, the compression factor (100) is ignored
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                });
-        } catch (IOException e) {
-            Log.e("SlowMo", "Error reading assets", e);
-            // Per evitare errore "variabile potrebbe essere non inizializzata"
-            throw new RuntimeException("Error reading assets!", e);
-        }
+        }).start();
     }
 
-    private Module loadPytorchModule(String assetName) {
-        return LiteModuleLoader.loadModuleFromAsset(getAssets(), assetName);
+    public void loadFileOnClick(View w) {
+        // TODO
     }
 
-    public void buttonOnClick(View v) {
+    public void startElabOnClick(View v) {
+        if (!loadedSlowMoEvaluator)
+            outString("Premuto il pulsante prima che sia caricato il valutatore");
+
         LocalDateTime time = LocalDateTime.now();
         DateTimeFormatter f = DateTimeFormatter.ISO_LOCAL_TIME;
         String out = "Premuto alle " + f.format(time);
@@ -103,9 +120,14 @@ public class SlomoActivity extends AppCompatActivity {
         }
     }
 
+    private Module loadPytorchModule(String assetName) {
+        return LiteModuleLoader.loadModuleFromAsset(getAssets(), assetName);
+    }
+
+    @SuppressLint("SetTextI18n")
     private void outString(String s) {
         TextView tv = (TextView) findViewById(R.id.textView);
-        tv.setText(s + "\n" + tv.getText());
+        runOnUiThread(() -> tv.setText(s + "\n" + tv.getText()));
     }
 
     private static String getFrameInterpFileForResolution(int x, int y) {

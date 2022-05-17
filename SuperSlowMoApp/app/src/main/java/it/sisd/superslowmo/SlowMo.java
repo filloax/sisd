@@ -23,6 +23,7 @@ public class SlowMo {
     private Module flowCompCat;
 //    private Module arbTimeFlowIntrp;
     private Module frameInterp;
+    private float progress = 0;
 
     private IImageWriter imageWriter;
 
@@ -46,13 +47,15 @@ public class SlowMo {
         );
     }
 
-    public void doEvaluation() {
+    public synchronized void doEvaluation() {
         log("Starting SuperSloMo eval");
 
         int iter = 0;
         int frameCounter = 1;
         int scaleFactor = 2;
 //        int batch_size = 1;
+        float progressIncrements = 1 / (float) videoFrames.len();
+        progress = 0;
 
         for (Pair<Tensor, Tensor> sample : videoFrames) {
             IValue I0 = IValue.from(sample.first), I1 = IValue.from(sample.second);
@@ -98,6 +101,8 @@ public class SlowMo {
             }
 
 //            frameCounter += scaleFactor * (batch_size - 1);
+
+            progress += Math.max(progressIncrements, 1f);
         }
 
         log("Ended SuperSloMo eval");
@@ -149,5 +154,9 @@ public class SlowMo {
     public SlowMo logOut(Consumer<String> logOut) {
         this.logOut = logOut;
         return this;
+    }
+
+    public float getProgress() {
+        return progress;
     }
 }

@@ -4,15 +4,16 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:paddingTop="400dp"
+    android:paddingTop="100dp"
     android:weightSum="100"
     tools:context=".MainActivity">
+
     <TextView
         android:id="@+id/textView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center"
         android:layout_marginBottom="50dp"
+        android:gravity="center"
         android:text="Seleziona un'operazione" />
 
     <Button
@@ -20,17 +21,17 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:text="Elabora"
         android:layout_marginBottom="200dp"
-        android:layout_weight="3" />
+        android:layout_weight="3"
+        android:text="Elabora" />
 
     <Button
         android:id="@+id/cattura_bt"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:text="Cattura video"
         android:layout_marginBottom="10dp"
-        android:layout_weight="3" />
+        android:layout_weight="3"
+        android:text="Cattura video" />
 
 </LinearLayout>
