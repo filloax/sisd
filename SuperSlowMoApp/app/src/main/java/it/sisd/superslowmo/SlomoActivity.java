@@ -3,35 +3,40 @@ package it.sisd.superslowmo;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.annotation.SuppressLint;
-import android.content.Context;
-import android.graphics.Bitmap;
+import android.opengl.Visibility;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import org.pytorch.LiteModuleLoader;
 import org.pytorch.Module;
 import org.pytorch.Tensor;
+import org.pytorch.torchvision.TensorImageUtils;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Optional;
 
 import it.sisd.pytorchreimpl.VideoDataset;
 
 public class SlomoActivity extends AppCompatActivity {
     SlowMo slowMoEvaluator;
+    ConvertVideo convertVideo;
     boolean runningEval = false;
     boolean loadedSlowMoEvaluator = false;
-    Button startButton = null;
     String selectedFile = "";
+    private int scaleFactor = 2; // scaleFactor 2 for now, to add selection
+
+    Button startButton = null;
+    Button chooseFileButton = null;
+    TextView progressText = null;
+    ProgressBar progressBar = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,7 +47,16 @@ public class SlomoActivity extends AppCompatActivity {
         startButton.setEnabled(false);
         startButton.setOnClickListener(this::startElabOnClick);
 
-        final Button chooseFileButton = findViewById(R.id.fileSelectButton);
+        chooseFileButton = findViewById(R.id.fileSelectButton);
+        chooseFileButton.setEnabled(false);
+        chooseFileButton.setOnClickListener(this::loadFileOnClick);
+
+        progressText = findViewById(R.id.progressText);
+        progressBar = findViewById(R.id.slowmoProgressBar);
+        progressText.setVisibility(View.INVISIBLE);
+        progressBar.setVisibility(View.INVISIBLE);
+
+        convertVideo = new ConvertVideo(s -> Log.d(Constants.LOG_TAG, s));
 
         createSlowMoEvaluator();
     }
@@ -51,47 +65,36 @@ public class SlomoActivity extends AppCompatActivity {
         outString("Initializing SlowMo service...");
 
         new Thread( () -> {
-            try {
-                Module flowCompCat = loadPytorchModule("flowCompCat.ptl");
-    //            Module arbTimeFlowIntrp = loadPytorchModule("ArbTimeFlowIntrp.ptl");
+            File workDir = new File(getApplicationContext().getFilesDir(), Constants.WORK_DIR);
+            if (!workDir.isDirectory())
+                workDir.mkdir();
 
-                VideoDataset<Tensor> videoFrames = SlowMo.createDataset(getApplicationContext(), Constants.IN_FRAMES_DIR);
+            Module flowCompCat = loadPytorchModule("flowCompCat.ptl");
 
-                Module frameInterp = loadPytorchModule(getFrameInterpFileForResolution(videoFrames.getOrigDim().x, videoFrames.getOrigDim().y));
+            slowMoEvaluator = new SlowMo()
+                    .scaleFactor(scaleFactor)
+                    .flowCompCat(flowCompCat)
+                    .logOut(this::outString);
 
-                final File outDir = Paths.get(this.getApplicationContext().getFilesDir().getAbsolutePath(), Constants.OUT_FRAMES_DIR)
-                        .toAbsolutePath().toFile();
-
-                if (!outDir.exists()) {
-                    outDir.mkdir();
-                }
-
-                slowMoEvaluator = new SlowMo().videoFrames(videoFrames)
-                        .flowCompCat(flowCompCat)
-                        .frameInterp(frameInterp)
-                        .logOut(this::outString)
-                        .imageWriter((name, bitmap) -> {
-                            String path = new File(outDir, name).toString();
-                            try (FileOutputStream out = new FileOutputStream(path)) {
-                                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out); // bmp is your Bitmap instance
-                                // PNG is a lossless format, the compression factor (100) is ignored
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                        });
-
-                runOnUiThread(() -> startButton.setEnabled(true));
-                loadedSlowMoEvaluator = true;
-                outString("Loaded SlowMo service!");
-            } catch (IOException e) {
-                Log.e("SlowMo", "Error reading assets", e);
-                outString("Error reading assets, cannot start");
-            }
+            runOnUiThread(() -> chooseFileButton.setEnabled(true));
+            loadedSlowMoEvaluator = true;
+            outString("Loaded SlowMo service!");
         }).start();
     }
 
     public void loadFileOnClick(View w) {
-        // TODO
+        try {
+            selectedFile = Utils.assetFilePath(getApplicationContext(), "elefante.mp4");
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        }
+
+        outString("Select file not implemented; using test asset elefante.mp4");
+
+        if (!"".equals(selectedFile)) {
+            startButton.setEnabled(true);
+        }
     }
 
     public void startElabOnClick(View v) {
@@ -105,16 +108,120 @@ public class SlomoActivity extends AppCompatActivity {
 
         if (!runningEval) {
             runningEval = true;
-            final File outDir = Paths.get(this.getApplicationContext().getFilesDir().getAbsolutePath(), Constants.OUT_FRAMES_DIR)
-                    .toAbsolutePath().toFile();
-            outString("Saving to dir " + outDir);
-            new Thread() {
-                public void run() {
-                    slowMoEvaluator.doEvaluation();
-                    runningEval = false;
-                    outString("Saved to dir " + outDir);
+
+            new Thread(() -> {
+                File selectedFileObj = new File(selectedFile);
+                String videoName = Utils.getFileNameWithoutExtension(selectedFileObj.getName());
+
+//                Optional<String> videoExt = Utils.getExtensionByStringHandling(selectedFile);
+//                if (!videoExt.isPresent()) {
+//                    outString(selectedFile + " is not a video!");
+//                    runningEval = false;
+//                    return;
+//                }
+
+                // Prepare dirs
+                File extractedFramesDir = Paths.get(
+                        getApplicationContext().getFilesDir().getAbsolutePath(),
+                    Constants.WORK_DIR,
+                    videoName + "_extracted"
+                ).toAbsolutePath().toFile();
+                if (!extractedFramesDir.exists()) {
+                    extractedFramesDir.mkdir();
                 }
-            }.start();
+                File convertedFramesDir = Paths.get(
+                    getApplicationContext().getFilesDir().getAbsolutePath(),
+                    Constants.WORK_DIR,
+                    videoName + "_converted"
+                ).toAbsolutePath().toFile();
+                if (!convertedFramesDir.exists()) {
+                    convertedFramesDir.mkdir();
+                }
+
+                // Extract frames from video
+                boolean convertSuccess = convertVideo.extractFramesAndResize(
+                        selectedFile,
+                        extractedFramesDir.getAbsolutePath(),
+                        320, 180
+                );
+                if (!convertSuccess) {
+                    outString("Failed frame extraction!");
+                    runningEval = false;
+                    return;
+                }
+
+                outString("Frames extracted");
+
+                // Elab video
+                // Imposta parametri di superslowo in base a risoluzione
+                // e nome file (nome usato per percorso di destinazione
+                VideoDataset<Tensor> videoFrames = null;
+                try {
+                    videoFrames = VideoDataset.withRootPath(extractedFramesDir.getAbsolutePath(), bitmap ->
+                            TensorImageUtils.bitmapToFloat32Tensor(bitmap,
+                                    TensorImageUtils.TORCHVISION_NORM_MEAN_RGB,
+                                    TensorImageUtils.TORCHVISION_NORM_STD_RGB
+                            )
+                    );
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    outString(e.getMessage());
+                    runningEval = false;
+                    return;
+                }
+                Module frameInterp = loadPytorchModule(getFrameInterpFileForResolution(videoFrames.getOrigDim().x, videoFrames.getOrigDim().y));
+                slowMoEvaluator
+                        .videoFrames(videoFrames)
+                        .frameInterp(frameInterp)
+                        .imageWriter(new ImageWriter(convertedFramesDir.getAbsolutePath()));
+
+                outString("Prepared frame dataset and slowmo evaluator, start conversion");
+
+                runOnUiThread(() -> {
+                    progressText.setVisibility(View.VISIBLE);
+                    progressBar.setVisibility(View.VISIBLE);
+                });
+
+                // Inizia elaborazione
+                slowMoEvaluator.doEvaluation();
+
+                runOnUiThread(() -> {
+                    progressText.setVisibility(View.INVISIBLE);
+                    progressBar.setVisibility(View.INVISIBLE);
+                });
+
+                // Converti frame in video
+                outString("Conversion done, merge frames in video");
+                String outVideoName = videoName + "_SloMo";
+                // Usa mp4 essendo in convertutils codec h264
+                String outVideoPath = new File(selectedFileObj.getParent(), outVideoName + ".mp4").toString();
+//                String outVideoPath = new File(selectedFileObj.getParent(), outVideoName + "." + videoExt.get()).toString();
+                float fps = Utils.getVideoFramerate(selectedFile);
+
+                outString("=== " + outVideoName + " | " + videoName);
+
+                outString("Saving to " + outVideoPath + " at " + fps + " fps");
+
+                boolean mergeSuccess = convertVideo.createVideo(convertedFramesDir.getAbsolutePath(), outVideoPath, fps);
+                if (!mergeSuccess) {
+                    outString("Failed convert frames to video!");
+                    runningEval = false;
+                    return;
+                }
+
+                outString("Conversion done, removing frames...");
+
+                runningEval = false;
+                outString("Saved to " + outVideoPath);
+            }).start();
+
+            new Thread(() -> {
+                while (runningEval) {
+                    if (progressBar.isEnabled()) {
+                        progressBar.setProgress((int)(slowMoEvaluator.getProgress() * 100));
+                    }
+                }
+            }).start();
         } else {
             outString("Already running");
         }
@@ -141,24 +248,5 @@ public class SlomoActivity extends AppCompatActivity {
         }
 
         throw new IllegalArgumentException("No frame interp model available for resolution " + x + "x" + y);
-    }
-
-    public static String assetFilePath(Context context, String assetName) throws IOException {
-        File file = new File(context.getFilesDir(), assetName);
-        if (file.exists() && file.length() > 0) {
-            return file.getAbsolutePath();
-        }
-
-        try (InputStream is = context.getAssets().open(assetName)) {
-            try (OutputStream os = new FileOutputStream(file)) {
-                byte[] buffer = new byte[4 * 1024];
-                int read;
-                while ((read = is.read(buffer)) != -1) {
-                    os.write(buffer, 0, read);
-                }
-                os.flush();
-            }
-            return file.getAbsolutePath();
-        }
     }
 }

@@ -11,7 +11,6 @@ import org.pytorch.Tensor;
 import org.pytorch.torchvision.TensorImageUtils;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Locale;
 import java.util.function.Consumer;
 
@@ -19,12 +18,15 @@ import it.sisd.pytorchreimpl.TensorUtils;
 import it.sisd.pytorchreimpl.VideoDataset;
 
 public class SlowMo {
+    public static final boolean PRINT_DURING_ITERS = false;
+
     private VideoDataset<Tensor> videoFrames;
     private Module flowCompCat;
 //    private Module arbTimeFlowIntrp;
     private Module frameInterp;
-    private float progress = 0;
+    private int scaleFactor = 2;
 
+    private float progress = 0;
     private IImageWriter imageWriter;
 
     private Consumer<String> logOut;
@@ -41,8 +43,8 @@ public class SlowMo {
     public SlowMo() {
     }
 
-    public static VideoDataset<Tensor> createDataset(Context context, String framesdir) throws IOException {
-        return VideoDataset.withContext(context, framesdir, bitmap ->
+    public static VideoDataset<Tensor> createTestDataset(Context context, String framesdir) throws IOException {
+        return VideoDataset.withContextAssets(context, framesdir, bitmap ->
             TensorImageUtils.bitmapToFloat32Tensor(bitmap, TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB)
         );
     }
@@ -52,7 +54,6 @@ public class SlowMo {
 
         int iter = 0;
         int frameCounter = 1;
-        int scaleFactor = 2;
 //        int batch_size = 1;
         float progressIncrements = 1 / (float) videoFrames.len();
         progress = 0;
@@ -60,20 +61,20 @@ public class SlowMo {
         for (Pair<Tensor, Tensor> sample : videoFrames) {
             IValue I0 = IValue.from(sample.first), I1 = IValue.from(sample.second);
 
-            log("=== Doing sample " + (iter++) + " ===");
+            if (PRINT_DURING_ITERS) log("=== Doing sample " + (iter++) + " ===");
 
             IValue[] flowOutTuple = flowCompCat.forward(I0, I1).toTuple();
             IValue I_F_0_1 = flowOutTuple[0], I_F_1_0 = flowOutTuple[1];
             Tensor F_0_1 = I_F_0_1.toTensor();
             Tensor F_1_0 = I_F_1_0.toTensor();
 
-            log("\t Did flowout");
+            if (PRINT_DURING_ITERS) log("\t Did flowout");
 
             // Save reference frames as image
             // Possibile ottimizzazione: usare direttamente il file originale senza crearne di nuovi
             resizeAndSaveFrame(frameCounter, sample.first);
 
-            log(String.format(Locale.getDefault(), "\tSaved reference frame %05d.png", frameCounter));
+            if (PRINT_DURING_ITERS) log(String.format(Locale.getDefault(), "\tSaved reference frame %05d.png", frameCounter));
 
             frameCounter++;
 
@@ -90,19 +91,19 @@ public class SlowMo {
                 );
                 Tensor Ft_p = I_Ft_p.toTensor();
 
-                log(String.format(Locale.getDefault(), "\tInterpolated frame %d|%d", intermediateIndex, frameCounter));
+                if (PRINT_DURING_ITERS) log(String.format(Locale.getDefault(), "\tInterpolated frame %d|%d", intermediateIndex, frameCounter));
 
                 // Save interpolated frame as image
                 resizeAndSaveFrame( frameCounter, Ft_p);
 
-                log(String.format(Locale.getDefault(), "\tSaved frame %05d.png", frameCounter));
+                if (PRINT_DURING_ITERS) log(String.format(Locale.getDefault(), "\tSaved frame %05d.png", frameCounter));
 
                 frameCounter ++;
             }
 
 //            frameCounter += scaleFactor * (batch_size - 1);
 
-            progress += Math.max(progressIncrements, 1f);
+            progress += Math.min(progressIncrements, 1f);
         }
 
         log("Ended SuperSloMo eval");
@@ -116,9 +117,7 @@ public class SlowMo {
          */
         int dimy = (int) frameTensor.shape()[2];
         int dimx = (int) frameTensor.shape()[3];
-        String name = String.format("%05d.png", sequenceNum);
-
-        log(dimx + " " + dimy);
+        String name = String.format(Locale.getDefault(), "%d.png", sequenceNum);
 
         // Possibile ottimizzazione: resize insieme a conversione a bitmap
         Bitmap bm1 = TensorUtils.bitmapFromRGBImageAsFloatArray(frameTensor.getDataAsFloatArray(), dimx, dimy);
@@ -128,7 +127,7 @@ public class SlowMo {
     private void log(String s) {
         if (logOut != null)
             logOut.accept(s);
-        Log.println(Log.INFO, "SlowMo", s);
+        Log.println(Log.INFO, Constants.LOG_TAG, s);
     }
 
     public SlowMo videoFrames(VideoDataset<Tensor> videoFrames) {
@@ -148,6 +147,11 @@ public class SlowMo {
 
     public SlowMo imageWriter(IImageWriter imageWriter) {
         this.imageWriter = imageWriter;
+        return this;
+    }
+
+    public SlowMo scaleFactor(int scaleFactor) {
+        this.scaleFactor = scaleFactor;
         return this;
     }
 

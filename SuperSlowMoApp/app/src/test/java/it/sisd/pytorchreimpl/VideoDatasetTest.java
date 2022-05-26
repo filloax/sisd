@@ -10,12 +10,9 @@ import androidx.test.core.app.ApplicationProvider;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.pytorch.PyTorchAndroid;
 import org.pytorch.Tensor;
 import org.pytorch.torchvision.TensorImageUtils;
 import org.robolectric.RobolectricTestRunner;
-
-import java.util.Arrays;
 
 @RunWith(RobolectricTestRunner.class)
 public class VideoDatasetTest {

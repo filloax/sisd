@@ -6,6 +6,9 @@ import android.graphics.BitmapFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Paths;
+
+import it.sisd.superslowmo.Constants;
 
 public class ContextImageLoader extends AbstractImageLoader {
     private Context context;
@@ -15,7 +18,8 @@ public class ContextImageLoader extends AbstractImageLoader {
     }
 
     @Override
-    public Bitmap loadImage(String filepath) throws IOException {
-        return BitmapFactory.decodeStream(context.getAssets().open(filepath));
+    public Bitmap loadImage(String filepath) {
+        String absPath = Paths.get(context.getFilesDir().getAbsolutePath(), filepath).toAbsolutePath().toString();
+        return BitmapFactory.decodeFile(absPath);
     }
 }

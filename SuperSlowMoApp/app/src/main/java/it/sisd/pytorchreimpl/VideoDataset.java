@@ -2,8 +2,10 @@ package it.sisd.pytorchreimpl;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.media.Image;
 import android.util.Pair;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -31,7 +33,49 @@ public class VideoDataset<T> extends Dataset<Pair<T, T>> {
     }
 
     /**
+     * Create a new VideoDataset loading from the files
+     * @param root Root directory path.
+     * @param transform callable, optional, but required
+     *                 if you want the dataset to return a type
+     *                 different than Bitmap
+     *                 A function/transform that takes in
+     *                 a sample and returns a transformed version.
      *
+     * @return a new VideoDataset
+     * @throws IOException if load fails
+     */
+    public static <T> VideoDataset<T> withRootPath(String root, Function<Bitmap, T> transform) throws IOException {
+        File rootDir = new File(root);
+
+        if (!rootDir.isDirectory()) {
+            throw new IllegalArgumentException("root " + root + " is not a directory!");
+        }
+
+        String[] fileList = rootDir.list();
+
+        if (fileList.length == 0) {
+            throw new IllegalArgumentException(String.format("No files inside the root dir '%s'", root));
+        }
+
+        String[] framePaths = new String[fileList.length];
+        for (int i = 0; i < fileList.length; i++) {
+            framePaths[i] = Paths.get(root, fileList[i]).toAbsolutePath().toString();
+        }
+
+        IImageLoader imageLoader = new ImageLoader();
+        Bitmap firstFrame = imageLoader.loadImage(framePaths[0]);
+        Size origDim = new Size(firstFrame.getWidth(), firstFrame.getHeight());
+        Size dim = new Size(Math.floorDiv(origDim.x, DIM_UNIT) * DIM_UNIT, Math.floorDiv(origDim.y, DIM_UNIT) * DIM_UNIT);
+
+        return new VideoDataset<>(imageLoader, root, framePaths, transform, origDim, dim);
+    }
+
+
+    public static <T> VideoDataset<T> withRootPath(String root) throws IOException {
+        return withRootPath(root, null);
+    }
+    /**
+     * Create a new VideoDataset loading from the assets folder
      * @param context Android context, required for file loading.
      * @param root Root directory path.
      * @param transform callable, optional, but required
@@ -43,7 +87,7 @@ public class VideoDataset<T> extends Dataset<Pair<T, T>> {
      * @return a new VideoDataset
      * @throws IOException if load fails
      */
-    public static <T> VideoDataset<T> withContext(Context context, String root, Function<Bitmap, T> transform) throws IOException {
+    public static <T> VideoDataset<T> withContextAssets(Context context, String root, Function<Bitmap, T> transform) throws IOException {
         String[] fileList = context.getAssets().list(root);
 
         if (fileList.length == 0) {
@@ -55,7 +99,7 @@ public class VideoDataset<T> extends Dataset<Pair<T, T>> {
             framePaths[i] = Paths.get(root, fileList[i]).toString();
         }
 
-        IImageLoader imageLoader = new ContextImageLoader(context);
+        IImageLoader imageLoader = new ContextAssetsImageLoader(context);
         Bitmap firstFrame = imageLoader.loadImage(framePaths[0]);
         Size origDim = new Size(firstFrame.getWidth(), firstFrame.getHeight());
         Size dim = new Size(Math.floorDiv(origDim.x, DIM_UNIT) * DIM_UNIT, Math.floorDiv(origDim.y, DIM_UNIT) * DIM_UNIT);
@@ -77,8 +121,8 @@ public class VideoDataset<T> extends Dataset<Pair<T, T>> {
         return new VideoDataset<>(imageLoader, root, framePaths, transform, origDim, dim);
     }
 
-    public static <T> VideoDataset<T> withContext(Context context, String root) throws IOException {
-        return withContext(context, root, null);
+    public static <T> VideoDataset<T> withContextAssets(Context context, String root) throws IOException {
+        return withContextAssets(context, root, null);
     }
 
     /**
