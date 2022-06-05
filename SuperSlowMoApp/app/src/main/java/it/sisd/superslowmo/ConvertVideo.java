@@ -23,7 +23,8 @@ public class ConvertVideo {
     public ConvertVideo() { this(null); }
 
     public boolean extractFrames(String inVideoPath, String outFramesDir) {
-        String command = String.format(Locale.getDefault(),
+        // US Locale for decimal separator used by ffmpeg
+        String command = String.format(Locale.US,
             "-i %s -vsync 0 %s/%%06d.png",
             inVideoPath, outFramesDir
         );
@@ -37,7 +38,8 @@ public class ConvertVideo {
     }
 
     public boolean extractFramesAndResize(String inVideoPath, String outFramesDir, int newWidth, int newHeight) {
-        String command = String.format(Locale.getDefault(),
+        // US Locale for decimal separator used by ffmpeg
+        String command = String.format(Locale.US,
                 "-i %s -vsync 0 -vf \"scale=%d:%d\" %s/%%06d.png",
                 inVideoPath, newWidth, newHeight, outFramesDir
         );
@@ -51,7 +53,8 @@ public class ConvertVideo {
     }
 
     public boolean createVideo(String inFramesDir, String outVideoPath, float fps) {
-        String command = String.format(Locale.getDefault(),
+        // US Locale for decimal separator used by ffmpeg
+        String command = String.format(Locale.US,
             "-y -r %.2f -i %s/%%d.png \"%s\"",
             fps, inFramesDir, outVideoPath
         );
