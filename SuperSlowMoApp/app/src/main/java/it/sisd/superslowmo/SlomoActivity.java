@@ -1,15 +1,30 @@
 package it.sisd.superslowmo;
 
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContract;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.annotation.SuppressLint;
+import android.content.ContentValues;
 import android.opengl.Visibility;
+import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+
+import com.arthenica.ffmpegkit.FFmpegKitConfig;
 
 import org.pytorch.LiteModuleLoader;
 import org.pytorch.Module;
@@ -17,10 +32,15 @@ import org.pytorch.Tensor;
 import org.pytorch.torchvision.TensorImageUtils;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import java.util.Optional;
 
 import it.sisd.pytorchreimpl.VideoDataset;
@@ -37,6 +57,9 @@ public class SlomoActivity extends AppCompatActivity {
     Button chooseFileButton = null;
     TextView progressText = null;
     ProgressBar progressBar = null;
+    boolean loadedVideoFile = false;
+    private ActivityResultLauncher<Intent> loadFileActivityResultLauncher;
+    private Uri fileUri = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,6 +80,20 @@ public class SlomoActivity extends AppCompatActivity {
         progressBar.setVisibility(View.INVISIBLE);
 
         convertVideo = new ConvertVideo(s -> Log.d(Constants.LOG_TAG, s));
+
+        loadFileActivityResultLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if(result.getResultCode() == Activity.RESULT_OK){
+                        if(result != null){
+                            fileUri = result.getData().getData();
+                            selectedFile = FFmpegKitConfig.getSafParameterForRead(getApplicationContext(), fileUri);
+                            startButton.setEnabled(true);
+                            outString("Loaded file!");
+                        }
+                    }
+                }
+        );
 
         createSlowMoEvaluator();
     }
@@ -90,16 +127,34 @@ public class SlomoActivity extends AppCompatActivity {
             return;
         }
 
-        outString("Select file not implemented; using test asset elefante.mp4");
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("video/mp4");
+
+        loadFileActivityResultLauncher.launch(intent);
+
+        outString("Loading file...");
+        /*
+        if(fileUri == null)
+            outString("SelectFile not successful, using asset file elefante.mp4");
+        else
+            selectedFile = fileUri.getPath();
 
         if (!"".equals(selectedFile)) {
             startButton.setEnabled(true);
         }
+        */
+
     }
 
     public void startElabOnClick(View v) {
         if (!loadedSlowMoEvaluator)
             outString("Premuto il pulsante prima che sia caricato il valutatore");
+
+        if (fileUri == null)
+            outString("Premuto il pulsante prima che sia caricato il video");
+        else
+            outString("Video caricato: " + selectedFile);
 
         LocalDateTime time = LocalDateTime.now();
         DateTimeFormatter f = DateTimeFormatter.ISO_LOCAL_TIME;
@@ -126,17 +181,23 @@ public class SlomoActivity extends AppCompatActivity {
                     Constants.WORK_DIR,
                     videoName + "_extracted"
                 ).toAbsolutePath().toFile();
-                if (!extractedFramesDir.exists()) {
-                    extractedFramesDir.mkdir();
+                if (extractedFramesDir.exists()) {
+                    for(File file : extractedFramesDir.listFiles()){
+                        file.delete();
+                    }
                 }
+                extractedFramesDir.mkdir();
                 File convertedFramesDir = Paths.get(
                     getApplicationContext().getFilesDir().getAbsolutePath(),
                     Constants.WORK_DIR,
                     videoName + "_converted"
                 ).toAbsolutePath().toFile();
-                if (!convertedFramesDir.exists()) {
-                    convertedFramesDir.mkdir();
+                if (convertedFramesDir.exists()) {
+                    for(File file : convertedFramesDir.listFiles()){
+                        file.delete();
+                    }
                 }
+                convertedFramesDir.mkdir();
 
                 // Extract frames from video
                 boolean convertSuccess = convertVideo.extractFramesAndResize(
@@ -192,10 +253,17 @@ public class SlomoActivity extends AppCompatActivity {
 
                 // Converti frame in video
                 outString("Conversion done, merge frames in video");
-                String outVideoName = videoName + "_SloMo";
+                String outVideoName = "SloMo_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+
+                ContentValues contentValues = new ContentValues();
+                contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, outVideoName);
+                contentValues.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/SuperSloMo/");
                 // Usa mp4 essendo in convertutils codec h264
-                String outVideoPath = new File(selectedFileObj.getParent(), outVideoName + ".mp4").toString();
-//                String outVideoPath = new File(selectedFileObj.getParent(), outVideoName + "." + videoExt.get()).toString();
+                contentValues.put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4");
+                Uri outVideoUri = getContentResolver().insert(MediaStore.Video.Media.getContentUri("external"), contentValues);
+                String outVideoPath = FFmpegKitConfig.getSafParameterForWrite(getApplicationContext(), outVideoUri);
+//                  String outVideoPath = new File(selectedFileObj.getParent(), outVideoName + ".mp4").toString();
+//                  String outVideoPath = new File(selectedFileObj.getParent(), outVideoName + "." + videoExt.get()).toString();
                 float fps = Utils.getVideoFramerate(selectedFile);
 
                 outString("=== " + outVideoName + " | " + videoName);
