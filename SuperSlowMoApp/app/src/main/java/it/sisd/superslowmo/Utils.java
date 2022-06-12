@@ -1,8 +1,12 @@
 package it.sisd.superslowmo;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
+import android.media.MediaMetadataRetriever;
+import android.net.Uri;
+import android.util.Log;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -43,12 +47,12 @@ public class Utils {
                 .map(f -> f.substring(filename.lastIndexOf(".") + 1));
     }
 
-    public static float getVideoFramerate(String videoPath) {
+    public static float getVideoFramerate(Context context, Uri videoPath) {
         MediaExtractor extractor = new MediaExtractor();
         float frameRate = 30;
         try {
             //Adjust data source as per the requirement if file, URI, etc.
-            extractor.setDataSource(videoPath);
+            extractor.setDataSource(context, videoPath, null);
             int numTracks = extractor.getTrackCount();
             for (int i = 0; i < numTracks; ++i) {
                 MediaFormat format = extractor.getTrackFormat(i);
@@ -67,5 +71,28 @@ public class Utils {
         }
 
         return frameRate;
+    }
+
+    public static int[] getVideoSize(Context context, Uri videoPath) {
+        Log.d(Constants.LOG_TAG, videoPath + " ARGH");
+        MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+        retriever.setDataSource(context, videoPath);
+
+        int width = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH));
+        int height = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT));
+        // video verticale
+        if (Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)) % 180 == 90) {
+            int tmp = width;
+            width = height;
+            height = tmp;
+        }
+
+//        Bitmap bmp = retriever.getFrameAtTime();
+//        int width = bmp.getWidth();
+//        int height = bmp.getHeight();
+
+        retriever.release();
+
+        return new int[] {width, height};
     }
 }

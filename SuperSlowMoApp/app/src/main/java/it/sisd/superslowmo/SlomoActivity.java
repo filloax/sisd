@@ -9,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.annotation.SuppressLint;
 import android.content.ContentValues;
+import android.media.MediaMetadataRetriever;
 import android.opengl.Visibility;
 import android.app.Activity;
 import android.content.Context;
@@ -21,6 +22,7 @@ import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -55,6 +57,7 @@ public class SlomoActivity extends AppCompatActivity {
 
     Button startButton = null;
     Button chooseFileButton = null;
+    ImageButton cancelButton = null;
     TextView progressText = null;
     ProgressBar progressBar = null;
     boolean loadedVideoFile = false;
@@ -69,6 +72,10 @@ public class SlomoActivity extends AppCompatActivity {
         startButton = findViewById(R.id.startElabButton);
         startButton.setEnabled(false);
         startButton.setOnClickListener(this::startElabOnClick);
+
+        cancelButton = findViewById(R.id.cancelButton);
+        cancelButton.setEnabled(false);
+        cancelButton.setOnClickListener(this::cancelOnClick);
 
         chooseFileButton = findViewById(R.id.fileSelectButton);
         chooseFileButton.setEnabled(false);
@@ -120,12 +127,12 @@ public class SlomoActivity extends AppCompatActivity {
     }
 
     public void loadFileOnClick(View w) {
-        try {
-            selectedFile = Utils.assetFilePath(getApplicationContext(), "elefante.mp4");
-        } catch (IOException e) {
-            e.printStackTrace();
-            return;
-        }
+//        try {
+//            selectedFile = Utils.assetFilePath(getApplicationContext(), "elefante.mp4");
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//            return;
+//        }
 
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -154,7 +161,7 @@ public class SlomoActivity extends AppCompatActivity {
         if (fileUri == null)
             outString("Premuto il pulsante prima che sia caricato il video");
         else
-            outString("Video caricato: " + selectedFile);
+            outString("Video caricato: " + fileUri);
 
         LocalDateTime time = LocalDateTime.now();
         DateTimeFormatter f = DateTimeFormatter.ISO_LOCAL_TIME;
@@ -163,6 +170,7 @@ public class SlomoActivity extends AppCompatActivity {
 
         if (!runningEval) {
             runningEval = true;
+            cancelButton.setEnabled(true);
 
             new Thread(() -> {
                 File selectedFileObj = new File(selectedFile);
@@ -200,10 +208,22 @@ public class SlomoActivity extends AppCompatActivity {
                 convertedFramesDir.mkdir();
 
                 // Extract frames from video
-                boolean convertSuccess = convertVideo.extractFramesAndResize(
+
+                int[] widthHeight = Utils.getVideoSize(getApplicationContext(), fileUri);
+                int height = widthHeight[1];
+                int width = widthHeight[0];
+
+                // Set to horizontal
+                if (height > width) {
+                    outString("Vertical video, rotating");
+                    convertVideo.rotateClockwise();
+                } else {
+                    convertVideo.resetRotate();
+                }
+                convertVideo.setResize(320, 180);
+                boolean convertSuccess = convertVideo.extractFrames(
                         selectedFile,
-                        extractedFramesDir.getAbsolutePath(),
-                        320, 180
+                        extractedFramesDir.getAbsolutePath()
                 );
                 if (!convertSuccess) {
                     outString("Failed frame extraction!");
@@ -211,7 +231,7 @@ public class SlomoActivity extends AppCompatActivity {
                     return;
                 }
 
-                outString("Frames extracted");
+                outString("Frames extracted, base size: " + width + "x" + height);
 
                 // Elab video
                 // Imposta parametri di superslowo in base a risoluzione
@@ -253,7 +273,7 @@ public class SlomoActivity extends AppCompatActivity {
 
                 // Converti frame in video
                 outString("Conversion done, merge frames in video");
-                String outVideoName = "SloMo_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+                String outVideoName = "SloMo_" + videoName + "_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
 
                 ContentValues contentValues = new ContentValues();
                 contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, outVideoName);
@@ -264,12 +284,18 @@ public class SlomoActivity extends AppCompatActivity {
                 String outVideoPath = FFmpegKitConfig.getSafParameterForWrite(getApplicationContext(), outVideoUri);
 //                  String outVideoPath = new File(selectedFileObj.getParent(), outVideoName + ".mp4").toString();
 //                  String outVideoPath = new File(selectedFileObj.getParent(), outVideoName + "." + videoExt.get()).toString();
-                float fps = Utils.getVideoFramerate(selectedFile);
+                float fps = Utils.getVideoFramerate(getApplicationContext(), fileUri);
 
                 outString("=== " + outVideoName + " | " + videoName);
 
                 outString("Saving to " + outVideoPath + " at " + fps + " fps");
 
+                convertVideo.resetResize();
+                if (height > width) {
+                    convertVideo.rotateCounterClockwise();
+                } else {
+                    convertVideo.resetRotate();
+                }
                 boolean mergeSuccess = convertVideo.createVideo(convertedFramesDir.getAbsolutePath(), outVideoPath, fps);
                 if (!mergeSuccess) {
                     outString("Failed convert frames to video!");
@@ -290,9 +316,15 @@ public class SlomoActivity extends AppCompatActivity {
                     }
                 }
             }).start();
+
+            cancelButton.setEnabled(false);
         } else {
             outString("Already running");
         }
+    }
+
+    public void cancelOnClick(View view) {
+
     }
 
     private Module loadPytorchModule(String assetName) {
