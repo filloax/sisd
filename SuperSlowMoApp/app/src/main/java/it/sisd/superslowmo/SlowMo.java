@@ -22,7 +22,7 @@ public class SlowMo {
 
     private VideoDataset<Tensor> videoFrames;
     private Module flowCompCat;
-//    private Module arbTimeFlowIntrp;
+    //    private Module arbTimeFlowIntrp;
     private Module frameInterp;
     private int scaleFactor = 2;
 
@@ -31,13 +31,16 @@ public class SlowMo {
 
     private Consumer<String> logOut;
 
-    public SlowMo(VideoDataset<Tensor> videoFrames, Module flowCompCat, Module frameInterp, IImageWriter imageWriter, Consumer<String> logOut) {
+    private IProgressHandler progressHandler;
+
+    public SlowMo(VideoDataset<Tensor> videoFrames, Module flowCompCat, Module frameInterp, IImageWriter imageWriter, Consumer<String> logOut, IProgressHandler progressHandler) {
         this.videoFrames = videoFrames;
         this.flowCompCat = flowCompCat;
 //        this.arbTimeFlowIntrp = arbTimeFlowIntrp;
         this.frameInterp = frameInterp;
         this.imageWriter = imageWriter;
         this.logOut = logOut;
+        this.progressHandler = progressHandler;
     }
 
     public SlowMo() {
@@ -45,12 +48,14 @@ public class SlowMo {
 
     public static VideoDataset<Tensor> createTestDataset(Context context, String framesdir) throws IOException {
         return VideoDataset.withContextAssets(context, framesdir, bitmap ->
-            TensorImageUtils.bitmapToFloat32Tensor(bitmap, TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB)
+                TensorImageUtils.bitmapToFloat32Tensor(bitmap, TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB)
         );
     }
 
     public synchronized void doEvaluation() {
         log("Starting SuperSloMo eval");
+
+        publish(0, "Starting SuperSloMo eval");
 
         int iter = 0;
         int frameCounter = 1;
@@ -104,9 +109,13 @@ public class SlowMo {
 //            frameCounter += scaleFactor * (batch_size - 1);
 
             progress += Math.min(progressIncrements, 1f);
+
+            publish(progress);
         }
 
         log("Ended SuperSloMo eval");
+
+        publish(progress, "Ended SuperSlomo eval");
     }
 
     private void resizeAndSaveFrame(int sequenceNum, Tensor frameTensor) {
@@ -128,6 +137,18 @@ public class SlowMo {
         if (logOut != null)
             logOut.accept(s);
         Log.println(Log.INFO, Constants.LOG_TAG, s);
+    }
+
+    private void publish(float progress){
+        if(progressHandler != null){
+            progressHandler.publishProgress(progress);
+        }
+    }
+
+    private void publish(float progress, String message){
+        if(progressHandler != null){
+            progressHandler.publishProgress(progress, message);
+        }
     }
 
     public SlowMo videoFrames(VideoDataset<Tensor> videoFrames) {
@@ -157,6 +178,11 @@ public class SlowMo {
 
     public SlowMo logOut(Consumer<String> logOut) {
         this.logOut = logOut;
+        return this;
+    }
+
+    public SlowMo progressHandler(IProgressHandler progressHandler) {
+        this.progressHandler = progressHandler;
         return this;
     }
 

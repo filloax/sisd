@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">SuperSlowMo</string>
+    <string name="notification_channel_id">SuperSlomoElabChannel</string>
+    <string name="notification_channel_name">SuperSlomo Elaboration Channel</string>
+    <string name="notification_ongoing_title">Elaborazione in corso</string>
+    <string name="notification_completed_title">Elaborazione completata</string>
+    <string name="cancel_elaboration">Annulla</string>
+    <string name="notification_channel_description">Canale notifiche di elaborazione SuperSlomo</string>
 </resources>
