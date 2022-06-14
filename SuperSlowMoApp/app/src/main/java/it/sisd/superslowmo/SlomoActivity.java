@@ -310,34 +310,6 @@ public class SlomoActivity extends AppCompatActivity {
 
                 outString("Frames extracted, base size: " + videoWidth + "x" + videoHeight);
 
-//                Module frameInterp = loadPytorchModule(getFrameInterpFileForResolution(videoFrames.getOrigDim().x, videoFrames.getOrigDim().y));
-//                slowMoEvaluator
-//                        .videoFrames(videoFrames)
-//                        .frameInterp(frameInterp)
-//                        .imageWriter(new ImageWriter(convertedFramesDir.getAbsolutePath()));
-
-                /*
-                // Callback to handle SlomoWorker's result
-                ListenableFuture<WorkInfo> future = WorkManager.getInstance(getApplicationContext())
-                        .getWorkInfoById(slomoWorkRequest.getId());
-                Futures.addCallback(
-                        future,
-                        new FutureCallback<WorkInfo>() {
-                            @Override
-                            public void onSuccess(@Nullable WorkInfo result) {
-
-                            }
-
-                            @Override
-                            public void onFailure(Throwable t) {
-
-                            }
-                        },
-                        // callback runs on a new thread
-                        Executors.newSingleThreadExecutor()
-                );
-                */
-
                 outString("Prepared frame dataset and slowmo evaluator, start conversion");
 
                 runOnUiThread(() -> {
