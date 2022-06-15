@@ -8,11 +8,18 @@ import android.util.Log;
 import org.pytorch.IValue;
 import org.pytorch.Module;
 import org.pytorch.Tensor;
+import org.pytorch.torchvision.TensorImageUtils;
 
 import java.util.Arrays;
 
+import it.sisd.pytorchreimplkt.TensorUtilsKt;
+
 public class TensorUtils {
-    @SuppressLint("DefaultLocale")
+    public static Bitmap bitmapFromRGBImageAsFloatArray(float[] data, int width, int height) {
+        return TensorUtilsKt.tensor2Bitmap(data, width, height, TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
+    }
+
+    /*
     public static Bitmap bitmapFromRGBImageAsFloatArray(float[] data, int width, int height){
         Bitmap bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
 
@@ -45,6 +52,7 @@ public class TensorUtils {
         }
         return bmp;
     }
+    */
 
     public static Tensor cat(Tensor tensor1, Tensor tensor2, int dim) {
         return cat(new Tensor[]{tensor1, tensor2}, dim);
