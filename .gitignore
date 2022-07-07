@@ -5,3 +5,5 @@ appunti/sistemi_digitali.log
 appunti/sistemi_digitali.synctex.gz
 appunti/sistemi_digitali.toc
 local/*
+*.DS_Store
+

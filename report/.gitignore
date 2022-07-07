@@ -1,0 +1,8 @@
+*.aux
+*.dvi
+*.*latexmk
+*.fls
+*.log
+*.synctex*
+*.out
+
