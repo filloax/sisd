@@ -70,7 +70,7 @@ i dati in \texttt{IValue} tensori nell'API del sistema di destinazione, si chiam
 Una nota importante è il diverso formato dei modelli TorchScript ottimizzati per mobile: 
 essi vengono salvati tramite la funzione interna alla classe \texttt{ScriptModule}
 \emph{\_save\_for\_lite\_interpreter}, in un formato diverso rispetto a quelli salvati tramite
-\texttt{torch.jit.script}, come si evince dall'estensione suggerita dalla documentaizone .ptl
+\texttt{torch.jit.script}, come si evince dall'estensione suggerita dalla documentazione .ptl
 invece di .pt. Nella versione attuale di PyTorch Mobile, esistono due versioni diverse della
 libreria (per Android, \emph{org.pytorch.pytorch\_android} e 
 \emph{org.pytorch.pytorch\_android\_lite}): ogni versione è in grado di caricare solo i file
@@ -101,6 +101,7 @@ nell'applicazione funzionalità della libreria PyTorch all'esterno di un modello
 reimplementarle.
 
 \subsubsection*{Dataset}
+\label{sec:dataset}
 
 In questo progetto è stato scelto di reimplementare la classe Pytorch Dataset, 
 nel caso specifico di interesse al progetto, vale a dire un set di immagini rappresentanti
@@ -157,6 +158,11 @@ videoFrames = VideoDataset.withRootPath(
 );
 \end{lstlisting}
 
+Ultimo punto importante riguardo a questa classe: in PyTorch, Dataset per video ridimensiona
+le immagini caricate in modo che abbiamo valori di dimensione multipli di 32: per esempio, 
+da (320, 180) a (320, 160). È stato riprodotto questo comportamento in VideoDataset, ed è stato
+rilevante in fase di conversione del modello a mobile (vedi \ref{sec:adattamento-modello}).
+
 \subsubsection*{Concatenazione Tensori}
 
 Mancando le funzioni di PyTorch per svolgere operazioni tra Tensori, in particolare
@@ -205,14 +211,404 @@ questo artefatto è in figura \ref{fig:img_conversion_error}.
 \FloatBarrier
 
 \section{Adattamento del modello a Pytorch Mobile}
-Fillo
+
+Per adattare il modello di Super SlowMo a Pytorch Mobile innanzitutto è 
+stato necessario convertire il codice di Python del modello originale in
+Torchscript. Come spiegato nella sezione precedente, PyTorch Mobile è pensato
+per scrivere la maggior parte della componente logica del modello direttamente in Python, 
+per poi convertire la classe che estende \texttt{nn.Module} in Torchscript e esportarla nel
+dispositivo mobile, soprattutto non disponendo l'API Java di diverse delle funzioni necessarie
+per il funzionamento del sistema. 
+
+\subsection{Struttura del sistema di partenza}
+
+Le porzioni di codice seguenti estrometteranno le informazioni non essenziali.
+
+\subsubsection*{Modello}
+
+Il codice di Super SlowMo, seguendo il paper originale, usa tre diversi modelli PyTorch: 
+\texttt{flowComp}, \texttt{ArbTimeFlowIntrp}, e \texttt{flowBackWarp}.
+
+\begin{Python}
+# Initialize model
+flowComp = model.UNet(6, 4)
+ArbTimeFlowIntrp = model.UNet(20, 5)
+flowBackWarp = model.backWarp(videoFrames.dim[0], videoFrames.dim[1], device)
+\end{Python}
+
+Si noti come \texttt{flowBackWarp} è creata con la stessa dimensione dei fotogrammi in 
+ingresso. Queste sono istanze di classi Module complesse così definite:
+
+\begin{Python}
+class UNet(nn.Module):
+    """
+    A class for creating UNet like architecture as specified by 
+    the Super SloMo paper.
+    """
+
+    def __init__(self, inChannels, outChannels):
+        [...]
+        # Initialize neural network blocks.
+        self.conv1 = nn.Conv2d(inChannels, 32, 7, stride=1, padding=3)
+        self.conv2 = nn.Conv2d(32, 32, 7, stride=1, padding=3)
+        self.down1 = down(32, 64, 5)
+        self.down2 = down(64, 128, 3)
+        self.down3 = down(128, 256, 3)
+        self.down4 = down(256, 512, 3)
+        self.down5 = down(512, 512, 3)
+        self.up1   = up(512, 512)
+        self.up2   = up(512, 256)
+        self.up3   = up(256, 128)
+        self.up4   = up(128, 64)
+        self.up5   = up(64, 32)
+        self.conv3 = nn.Conv2d(32, outChannels, 3, stride=1, padding=1)
+
+    def forward(self, x):
+        # Forward non riportato per ragioni di spazio, applica
+        # i sotto-moduli creati sopra preceduti da due funzioni
+        # ReLU e seguiti da una ulteriore funzione ReLU.
+
+class backWarp(nn.Module):
+    """
+    A class for creating a backwarping object.
+
+    This is used for backwarping to an image:
+
+    Given optical flow from frame I0 to I1 --> F_0_1 
+    and frame I1, it generates I0 <-- backwarp(F_0_1, I1).
+    """
+
+    def __init__(self, W, H, device):
+        [...]
+        # create a grid
+        gridX, gridY = np.meshgrid(np.arange(W), np.arange(H))
+        self.W = W
+        self.H = H
+        self.gridX = torch.tensor(gridX, requires_grad=False, device=device)
+        self.gridY = torch.tensor(gridY, requires_grad=False, device=device)
+        
+    def forward(self, img, flow):
+        # Extract horizontal and vertical flows.
+        u = flow[:, 0, :, :]
+        v = flow[:, 1, :, :]
+        x = self.gridX.unsqueeze(0).expand_as(u).float() + u
+        y = self.gridY.unsqueeze(0).expand_as(v).float() + v
+        # range -1 to 1
+        x = 2*(x/self.W - 0.5)
+        y = 2*(y/self.H - 0.5)
+        # stacking X and Y
+        grid = torch.stack((x,y), dim=3)
+        # Sample pixels using bilinear interpolation.
+        imgOut = torch.nn.functional.grid_sample(img, grid)
+        return imgOut
+\end{Python}
+
+\texttt{up} e \texttt{down} sono altri due moduli del sistema non riportati per ragioni di
+spazio, riassunti dalla documentazione in questo modo:
+
+\begin{verbatim}
+down:
+    A class for creating neural network blocks containing layers:
+    Average Pooling --> Convolution + Leaky ReLU --> Convolution + Leaky ReLU
+    This is used in the UNet Class to create a UNet like NN architecture.
+up:
+    A class for creating neural network blocks containing layers: 
+    Bilinear interpolation --> Convolution + Leaky ReLU --> Convolution + Leaky ReLU
+    This is used in the UNet Class to create a UNet like NN architecture.
+\end{verbatim}
+
+\subsubsection*{Valutazione}
+
+Il codice per la valutazione è contenuto nello script python \emph{video\_to\_slomo.py}.
+Prima di tutto estrae i fotogrammi dal video tramite Ffmpeg, un diffuso programma per la 
+conversione di file media. Carica poi i fotogrammi tramite un DataLoader:
+
+\begin{Python}
+    # transform trasforma le immagini in tensori
+    videoFrames = dataloader.Video(root=extractionPath, transform=transform)
+    videoFramesloader = torch.utils.data.DataLoader(videoFrames, batch_size=args.batch_size, shuffle=False)
+\end{Python}
+
+Successivamente, itera sui fotogrammi presi a coppie tramite il DataLoader, interpolando i 
+fotogrammi intermedi tramite i modelli creati in precedenza:
+
+\begin{Python}
+for _, (frame0, frame1) in enumerate(tqdm(videoFramesloader), 0):
+    I0 = frame0.to(device)
+    I1 = frame1.to(device)
+
+    flowOut = flowComp(torch.cat((I0, I1), dim=1))
+    F_0_1 = flowOut[:,:2,:,:]
+    F_1_0 = flowOut[:,2:,:,:]
+
+    # Save reference frames in output folder
+    for batchIndex in range(args.batch_size):
+        (TP(frame0[batchIndex].detach())).resize(videoFrames.origDim, Image.BILINEAR).save(os.path.join(outputPath, str(frameCounter + args.sf * batchIndex) + ".png"))
+    frameCounter += 1
+
+    # Generate intermediate frames
+    for intermediateIndex in range(1, args.sf):
+        t = float(intermediateIndex) / args.sf
+        temp = -t * (1 - t)
+        fCoeff = [temp, t * t, (1 - t) * (1 - t), temp]
+
+        F_t_0 = fCoeff[0] * F_0_1 + fCoeff[1] * F_1_0
+        F_t_1 = fCoeff[2] * F_0_1 + fCoeff[3] * F_1_0
+
+        g_I0_F_t_0 = flowBackWarp(I0, F_t_0)
+        g_I1_F_t_1 = flowBackWarp(I1, F_t_1)
+
+        intrpOut = ArbTimeFlowIntrp(torch.cat((I0, I1, F_0_1, F_1_0, F_t_1, F_t_0, g_I1_F_t_1, g_I0_F_t_0), dim=1))
+
+        F_t_0_f = intrpOut[:, :2, :, :] + F_t_0
+        F_t_1_f = intrpOut[:, 2:4, :, :] + F_t_1
+        V_t_0   = torch.sigmoid(intrpOut[:, 4:5, :, :])
+        V_t_1   = 1 - V_t_0
+
+        g_I0_F_t_0_f = flowBackWarp(I0, F_t_0_f)
+        g_I1_F_t_1_f = flowBackWarp(I1, F_t_1_f)
+
+        wCoeff = [1 - t, t]
+
+        Ft_p = (wCoeff[0] * V_t_0 * g_I0_F_t_0_f + wCoeff[1] * V_t_1 * g_I1_F_t_1_f) / (wCoeff[0] * V_t_0 + wCoeff[1] * V_t_1)
+
+        # Save intermediate frame
+        for batchIndex in range(args.batch_size):
+            (TP(Ft_p[batchIndex].cpu().detach())).resize(videoFrames.origDim, Image.BILINEAR).save(os.path.join(outputPath, str(frameCounter + args.sf * batchIndex) + ".png"))
+        frameCounter += 1
+
+    # Set counter accounting for batching of frames
+    frameCounter += args.sf * (args.batch_size - 1)
+\end{Python}
+
+L'operazione è piuttosto complessa, e la quantità di fotogrammi generata dipende da 
+\emph{args.sf}, lo \emph{scale factor}, vale a dire il moltiplicatore (intero) della quantità 
+di fotogrammi del video finale a partire dall'originale. Per esempio, partendo da un video a 
+30 fotogrammi per secondo, uno scale factor di 3 porterebbe a un video finale di 90 fotogrammi 
+per secondo con la stessa durata, oppure ad un video finale di 30 fotogrammi per secondo ma 
+lungo $\frac{1}{3}$ del video originale.
+
+\subsection{Adattamento}
+
+Per adattare il complesso script di conversione e modello a PyTorch Mobile, è stato seguito il
+workflow consigliato per questo runtime, facendo in modo di apporre meno modifiche possibili
+al modello, per evitare possibili imprevisti sia data la sua complessità, sia dato lo stato 
+ancora in sviluppo di PyTorch Mobile.
+
+\subsubsection*{Adattamento del modello}
+\label{sec:adattamento-modello}
+
+Il modello è stato, come da workflow standard di PyTorch Mobile, convertito in TorchScript e 
+salvato su file per poterlo successivamente usare nell'applicazione Android. Una prima versione
+si limitava a creare istanze delle classi del sistema, convertirle in TorchScript dopo aver 
+caricato i dati del modello pre-allenato disponibile sul repository del sistema originale, 
+e salvarle su file, in questo modo:
+
+\begin{Python}
+# ckpt: percorso file di checkpoint contenente 
+# i parametri post-training
+dict1 = torch.load(ckpt, map_location='cpu')
+flowComp = model.UNet(6, 4)
+flowComp.load_state_dict(dict1['state_dictFC'])
+flowComp_ts = torch.jit.script(flowComp)
+flowComp_opt = optimize_for_mobile(flowComp_ts)
+flowComp_opt._save_for_lite_interpreter('flowComp.ptl')
+\end{Python}
+
+Il procedimento ha funzionato, dopo delle minori correzioni necessarie data la staticità
+dei tipi di TorschScript a differenza di Python, che portavano al fallimento della compilazione
+a causa di righe come
+
+\begin{Python}
+x = F.interpolate(x, scale_factor=2, mode='bilinear')
+\end{Python}
+
+dentro al modulo \texttt{up}, dove \emph{scale\_factor} richiede un dato di tipo \emph{float}, 
+ma riceve un \emph{int}, cioè 2, come valore. Ovviamente questa riga è perfettamente valida in 
+Python, che non differenzia neanche interi o float oltre a non avere questo genere di controlli
+di tipo, ma non in TorschScript che appunto è un linguaggio a tipi statici.
+
+Questa prima versione della conversione, però, per i problemi citati precedentemente nell'uso 
+di funzioni di PyTorch al di fuori di un modulo rendeva difficile implementare la parte di 
+valutazione che usava i modelli senza reimplementare diverse parti della libreria di PyTorch: 
+quindi, si ha optato per un approccio più vicino all'uso inteso del runtime Mobile, cioè di 
+includere quanto possibile delle parti di codice riguardanti PyTorch all'interno dei moduli. 
+
+Sono state quindi create due classi wrapper: \texttt{FlowCompCat}, che incapsula il codice
+di valutazione eseguito prima di iterare su ogni fotogramma intermedio da interpolare, e 
+\texttt{FrameInterpolation}, che genera i fotogrammi intermedi (corrispondente al codice
+che segue \texttt{for intermediateIndex in range(1, args.sf)} nel codice di valutazione
+originale).
+
+\begin{Python}
+class FlowCompCat(nn.Module):
+    def __init__(self) -> None:
+        self.flowComp = model.UNet(6, 4)
+
+    def forward(self, t1, t2):
+        flowOut = self.flowComp(torch.cat((t1, t2), dim=1))
+        F_0_1 = flowOut[:,:2,:,:]
+        F_1_0 = flowOut[:,2:,:,:]
+
+        return (F_0_1, F_1_0)
+
+    # Override di load_state_dict per caricare i dati del 
+    # checkpoint dentro al modulo di flowComp interno, 
+    # per cui sono stati creati
+    def load_state_dict(self, state_dict: 'OrderedDict[str, Tensor]', strict: bool = True):
+        return self.flowComp.load_state_dict(state_dict, strict)
+
+class FrameInterpolation(nn.Module):
+    def __init__(self, sizex, sizey) -> None:
+        self.flowBackWarp = model.backWarp(sizex, sizey, 'cpu')
+        self.ArbTimeFlowIntrp = model.UNet(20, 5)
+
+    def forward(self, t: float, I0, I1, F_0_1, F_1_0):
+        temp = -t * (1 - t)
+        [...]
+        # Codice corrispondente all'interno del loop nel codice 
+        # di valutazione originale, fino all'assegnamento di Ft_p
+        [...]
+
+        return (wCoeff[0] * V_t_0 * g_I0_F_t_0_f + wCoeff[1] * V_t_1 * g_I1_F_t_1_f) / (wCoeff[0] * V_t_0 + wCoeff[1] * V_t_1)
+
+    def load_state_dict(self, state_dict: 'OrderedDict[str, Tensor]', strict: bool = True):
+        return self.ArbTimeFlowIntrp.load_state_dict(state_dict, strict)
+\end{Python}
+
+Questi moduli vengono poi convertiti a TorchScript, ottimizzati per l'interprete lite, 
+e salvati su file come i precedenti.
+
+Si noti come \texttt{FrameInterpolation}, che contiene al suo interno \texttt{flowBackWarp}, 
+necessiti come esso di ricevere dall'esterno la dimensione dei fotogrammi. Questo ha creato una
+ulteriore problematica nel convertire i modelli: infatti, mentre eseguendo lo script Python
+l'oggetto del modulo \texttt{flowBackWarp} viene creato al momento, con parametri passati ad
+hoc in base ai fotogrammi caricati durante l'esecuzione, i parametri del modulo da esportare
+per PyTorch Mobile sono impostati prima della creazione del modulo da salvare, e una volta 
+salvato su file rimangono costanti. Non è un problema per gli altri due moduli, che sono creati
+con valori costanti per parametri. 
+
+Per ovviare al problema, è stato necessario esportare un modulo diverso per ogni combinazione
+di risoluzioni: questo mette già un primo vincolo all'applicazione mobile non presente
+nel modello originale, vale a dire la possibilità di scegliere solo tra una limitata gamma di
+risoluzioni di output.
+
+Inoltre, dato il funzionamento dei Dataset, le immagini in elaborazione vengono ridimensionate 
+a dimensioni multiple di 32 (vedi \ref{sec:dataset}); quindi le dimensioni preimpostate usate
+per la generazione dei moduli da caricare saranno assegnate a uno di questi valori.
+
+\begin{Python}
+flowBackwarpResolutions = [
+    (1280, 704),
+    (320, 160),
+]
+flowBackWarps = {}
+
+for res in flowBackwarpResolutions:
+    key = f"frameInterp_{res[0]}x{res[1]}"
+    flowBackWarps[key] = mobile_model.FrameInterpolation(res[0], res[1])
+    flowBackWarps[key] = flowBackWarps[key].to(device)
+    flowBackWarps[key].eval()
+    flowBackWarps[key].load_state_dict(dict1['state_dictAT'])
+\end{Python}
+
+\subsection{Valutazione}
+
+La valutazione, essendo eseguita dall'applicazione stessa, è realizzata in Java
+tramite le API di Android e PyTorch. Viene usata la classe VideoDataset mostrata in precedenza
+(vedi \ref{sec:dataset}) per emulare il caricamento dei fotogrammi dello script originale:
+
+\begin{lstlisting}
+videoFrames = VideoDataset.withRootPath(extractedFramesDir.getAbsolutePath(), bitmap ->
+    TensorImageUtils.bitmapToFloat32Tensor(bitmap,
+        TensorImageUtils.TORCHVISION_NORM_MEAN_RGB,
+        TensorImageUtils.TORCHVISION_NORM_STD_RGB
+    )
+);
+\end{lstlisting}
+
+È poi stata realizzata una classe \texttt{SlowMo}, contenente il \emph{core business} della
+valutazione. Riceve dall'esterno il dataset, i moduli caricati da file, lo scale factor, 
+un oggetto \emph{ImageWriter} e parametri opzionali come un handler degli aggiornamenti 
+del progresso dell'operazione (per poterli mostrare sull'app) ed eventuali funzioni di log.
+
+Anche ImageWriter è una classe dell'applicazione, usata per sostituire la creazione di file di
+fotogrammi con eventuali funzioni mock, nel caso sia necessario in fase di test.
+
+\begin{lstlisting}
+slowMoEvaluator = new SlowMo()
+    .scaleFactor(scaleFactor)
+    .videoFrames(videoFrames)
+    .flowCompCat(flowCompCat)
+    .frameInterp(frameInterp)
+    .imageWriter(new ImageWriter(convertedFramesDir.getAbsolutePath()));
+\end{lstlisting}
+
+Al suo interno, SlowMo ha una logica analoga a quella dello script \emph{video\_to\_slomo.py}
+di partenza:
+
+\begin{lstlisting}
+int iter = 0;
+int frameCounter = 1;
+float progressIncrements = 1 / (float) videoFrames.len();
+progress = 0;
+
+for (Pair<Tensor, Tensor> sample : videoFrames) {
+    IValue I0 = IValue.from(sample.first), I1 = IValue.from(sample.second);
+    IValue[] flowOutTuple = flowCompCat.forward(I0, I1).toTuple();
+    IValue I_F_0_1 = flowOutTuple[0], I_F_1_0 = flowOutTuple[1];
+
+    // Save reference frames as image
+    resizeAndSaveFrame(frameCounter, sample.first);
+
+    frameCounter++;
+
+    for (int intermediateIndex = 1; intermediateIndex < scaleFactor; intermediateIndex ++) {
+        double t = intermediateIndex / (double) scaleFactor;
+        IValue I_t = IValue.from(t);
+
+        IValue I_Ft_p = frameInterp.forward(
+                I_t,
+                I0,
+                I1,
+                I_F_0_1,
+                I_F_1_0
+        );
+        Tensor Ft_p = I_Ft_p.toTensor();
+
+        // Save interpolated frame as image
+        resizeAndSaveFrame( frameCounter, Ft_p);
+
+        frameCounter++;
+    }
+
+    progress += Math.min(progressIncrements, 1f);
+    publish(progress);
+}
+\end{lstlisting}
+
+Quindi: per ogni coppia di fotogrammi, viene fatta un'elaborazione preliminare con
+\texttt{flowCompCat}, e poi per ogni nuovo fotogramma la maggior parte del lavoro è svolto da
+\texttt{frameInterp}, che crea il tensore corrispondente alla nuova immagine; esso viene a sua
+volta convertito in immagine, scalato alla dimensione originale (per ovviare al già 
+citato ridimensionamento in multipli di 32 compiuto da Dataset), e salvato come immagine.
 
 \subsection{Limiti}
 
+Il modello così adattato a mobile, per quanto ben più ottimizzato dell'originale grazie a
+PyTorch Mobile e alle sue funzioni di ottimizzazione, rimane un software molto pesante per
+dispositivi mobili. La versione attuale è stata testata su video a 180p (cioè, di dimensione
+pari a 320x180 pixel, sia verticali che orizzontali), ma con dimensioni non troppo superiori
+fallisce nell'esecuzione a causa della mancanza di memoria. Inoltre, i tempi di esecuzione
+sono purtroppo lunghi, soprattutto aumentando la durata del video. Per il prototipo sviluppato 
+nel corso di questo progetto, quindi, sono supportati video a 180p, con uno \emph{scale factor} 
+di 2, che corrisponde a un raddoppiamento dei fotogrammi per secondo del video, o a un
+rallentamento del 50\%.
 
+Potrebbero essere svolte ulteriori ottimizzazioni, che saranno trattate successivamente 
+in questa relazione (vedi \ref{sec:sviluppi-futuri}).
 
-
-FONTI
+FONTI, METTERE POI IN BIBLIOGRAFIA
 
 https://pytorch.org/javadoc/1.9.0/
 

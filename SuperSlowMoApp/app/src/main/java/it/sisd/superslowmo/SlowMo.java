@@ -70,8 +70,6 @@ public class SlowMo {
 
             IValue[] flowOutTuple = flowCompCat.forward(I0, I1).toTuple();
             IValue I_F_0_1 = flowOutTuple[0], I_F_1_0 = flowOutTuple[1];
-            Tensor F_0_1 = I_F_0_1.toTensor();
-            Tensor F_1_0 = I_F_1_0.toTensor();
 
             if (PRINT_DURING_ITERS) log("\t Did flowout");
 

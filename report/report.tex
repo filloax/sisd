@@ -7,6 +7,9 @@
 \usepackage{color}
 \usepackage{placeins}
 
+% \DeclareFixedFont{\ttb}{T1}{txtt}{bx}{n}{12}
+% \DeclareFixedFont{\ttm}{T1}{txtt}{m}{n}{12} 
+
 \definecolor{pblue}{rgb}{0.13,0.13,1}
 \definecolor{pgreen}{rgb}{0,0.5,0}
 \definecolor{pred}{rgb}{0.9,0,0}
@@ -14,18 +17,34 @@
 
 \usepackage{listings}
 \lstset{language=Java,
-  showspaces=false,
-  showtabs=false,
-  breaklines=true,
-  showstringspaces=false,
-  breakatwhitespace=true,
-  commentstyle=\color{pgreen},
-  keywordstyle=\color{pblue},
-  stringstyle=\color{pred},
-  basicstyle=\ttfamily,
-  moredelim=[il][\textcolor{pgrey}]{$ $},
-  moredelim=[is][\textcolor{pgrey}]{\%\%}{\%\%}
+    showspaces=false,
+    showtabs=false,
+    breaklines=true,
+    showstringspaces=false,
+    breakatwhitespace=true,
+    commentstyle=\color{pgreen},
+    keywordstyle=\color{pblue},
+    stringstyle=\color{pred},
+    basicstyle=\ttfamily\footnotesize,
+    moredelim=[il][\textcolor{pgrey}]{$ $},
+    moredelim=[is][\textcolor{pgrey}]{\%\%}{\%\%}
 }
+\definecolor{deepblue}{rgb}{0,0,0.5}
+\definecolor{deepred}{rgb}{0.6,0,0}
+\definecolor{deepgreen}{rgb}{0,0.5,0}
+\lstnewenvironment{Python}
+    {\lstset{
+        language=Python,
+        basicstyle=\ttfamily\footnotesize,%\ttm,
+        morekeywords={self},              % Add keywords here
+        keywordstyle=\color{deepblue}, %\ttb\color{deepblue},
+        emph={MyClass,__init__},          % Custom highlighting
+        emphstyle=\color{deepred}, %\ttb\color{deepred},    % Custom highlighting style
+        stringstyle=\color{deepgreen},
+        frame=tb,                         % Any extra options here
+        showstringspaces=false
+    }}
+    {}
 
 \title{
     Sistemi Digitali M\\
