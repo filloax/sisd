@@ -4,9 +4,158 @@
 Gu
 
 
-\section{Ffmpeg}
-Fillo
+\section{Conversione video}
 
+L'applicazione necessita di un metodo per convertire i video in immagini contenenti i
+fotogrammi, e viceversa convertire le immagini in video una volta finita l'elaborazione.
+Si è scelto di usare Ffmpeg, la più diffusa software suite di elaborazione media.
+
+\subsubsection*{FFmpeg}
+
+FFmpeg è il framework multimedia più diffuso sul mercato. Offre la possibilità di convertire, 
+registrare, e riprodurre la maggior parte dei formati video e audio. In particolare, 
+\textbf{FFmpeg} vero e proprio è la suite di conversione, encoding, e decoding di file
+multimediali, nella forma di un programma da linea di comando estremamente flessibile.
+\textbf{FFplay} è un media player basato sulle stesse librerie, e \textbf{FFprobe} è un
+programma per l'analisi di stream multimediali. Nella maggior parte dei casi, quando si
+parla di FFmpeg si intende il programma di conversione di file multimediali.
+
+FFmpeg è gratuito e open source, ed è usato come backend di molte applicazioni di elaborazione
+media, sia mobile che desktop. Supporta la maggior parte dei sistemi operativi, tramite librerie
+ufficiali o create da utenti terzi, e in particolare, per lo scopo di questo progetto, anche
+Android. 
+
+Diverse librerie costituiscono la base di FFmpeg. Le più importanti per la funzione di
+conversione sono \emph{libavcodec}, contenente decoder e encoder per molti codec audio e video, 
+e \emph{libavformat}, contenente \emph{muxer} e \emph{demuxer} (multiplexer e demultiplexer, 
+per l'unione o separazione di canali multimedia) di vari formati media.
+
+L'uso del programma da linea di comando è il seguente: vengono specificati uno o più file di 
+input, uno o più file di output, e eventuali filtri e parametri opzionali. Per esempio:
+
+\begin{verbatim}
+-- Conversione tra formati audio
+ffmpeg -i audioin.wav audioout.mp3
+-- Estrazione di fotogrammi come immagini PNG
+ffmpeg -i videoin.mp4 frames/%06d.png
+-- Uso di filtri video per scalare e ruotare l'immagine, e altri parametri
+ffmpeg -i videoin.mp4 -vsync 0 -vf "transpose=1,scale=-1:180" frames/%06d.png
+\end{verbatim}
+
+In questo progetto, FFmpeg è stato usato per estrarre i fotogrammi come immagini PNG dal video
+di input, e unire i fotogrammi elaborati da Super SlowMo in un video con gli stessi fotogrammi
+per secondo dell'originale, e durata quindi raddoppiata.
+
+\subsubsection*{FFmpegKit}
+
+Per poter usare FFmpeg su Android, è stata usata la libreria FFmpegKit, che include strumenti
+per eseguire FFmpeg su Android, insieme ad altre piattaforme: iOS, macOS, tvOS, Flutter, e 
+React Native. Offre diversi script per fare build delle librerie di FFmpeg, e una libreria 
+wrapper per lanciare i comandi di FFmpeg e FFprobe all'interno delle applicazioni. 
+
+Per il contesto di questo progetto, FFmpegKit è stata usata per lanciare i comandi di FFmpeg
+all'interno dell'applicazione. Per questo scopo, offre una classe \texttt{FFmpegKit}, che può
+essere usata in questo modo, usando come esempio uno dei comandi mostrati sopra:
+
+\begin{lstlisting}
+FFmpegSession session = FFmpegKit.execute("-i videoin.mp4 frames/%06d.png");
+if (ReturnCode.isSuccess(session.getReturnCode())) {
+    Log.i("App", "Extraction success");
+} else if (ReturnCode.isCancel(session.getReturnCode())) {
+    Log.i("App", "Extraction canceled");
+} else {
+    Log.d("App", String.format("Extraction failed with state %s and rc %s.%s", session.getState(), session.getReturnCode(), session.getFailStackTrace()));
+}
+\end{lstlisting}
+
+L'istanza di \texttt{FFmpegSession} offre diversi metodi per ottenere informazioni sulla sessione
+in corso, specie nel caso in cui sia creata lanciando il comando in modo asincrono. Per esempio,
+questo codice permette di cancellare l'operazione dopo 5 secondi se non ancora conclusa:
+
+\begin{lstlisting}
+FFmpegSession session = FFmpegKit.executeAsync("-i videoin.mp4 -vsync 0 -vf \"transpose=1,scale=-1:180\" frames/%06d.png"),
+    new FFmpegSessionCompleteCallback() {
+        @Override
+        public void apply(FFmpegSession session) {
+            ReturnCode returnCode = session.getReturnCode();
+            Log.i("App", String.format("Extraction success with return code %s", returnCode));
+        }
+    });
+Thread.sleep(5000);
+if (session.getState() != SessionState.COMPLETED)
+    session.cancel();
+\end{lstlisting}
+
+La libreria viene inclusa all'interno del progetto semplicemente aggiungendola a 
+\emph{build.gradle}:
+
+\begin{verbatim}
+dependencies {
+    [...]
+    implementation 'com.arthenica:ffmpeg-kit-full:4.5.1-1'
+}
+\end{verbatim}
+
+\subsubsection*{ConvertVideo}
+
+Per semplificare l'uso di FFmpegKit nel contesto dell'applicazione, e ridurre il rischio
+di errori, comandi mal formati, o parametri dimenticati, è stata realizzata un'ulteriore 
+classe \texttt{ConvertVideo}, che fa da wrapper a FFmpegKit per aggiungere parametri tramite 
+metodi specifici, senza costruire manualmente la stringa del comando.
+
+Un esempio di uso per estrarre fotogrammi, scalarli a 180p, e ruotarli (supponendo quindi un 
+video verticale di partenza), è il seguente:
+
+\begin{lstlisting}
+convertVideo.rotateClockwise();
+convertVideo.setResize(320, 180);
+boolean convertSuccess = convertVideo.extractFrames(
+    selectedFile,
+    extractedFramesDir.getAbsolutePath()
+);
+\end{lstlisting}
+
+che è equivalente a 
+
+\begin{verbatim}
+ffmpeg -i $selectedFile -vsync 0 -vf "transpose=1,scale=320:180" 
+    $extractedFramesDir/%06d.png
+\end{verbatim}
+
+Questo assicura di evitare errori nell'impostazione dei parametri a livello di compilatore, 
+che altrimenti non sarebbero notati fino al tempo di esecuzione data la loro collocazione dentro
+ad una stringa.
+
+La classe offre un metodo per estrarre fotogrammi da un video:
+\begin{lstlisting}
+extractFrames(inVideoPath, outFramesDir)
+\end{lstlisting}
+
+e un metodo per unire dei fotogrammi in un video:
+\begin{lstlisting}
+createVideo(inFramesDir, outVideoPath, fps)
+\end{lstlisting}
+
+Offre inoltre alcuni metodi per impostare il ridimensionamento dell'immagine, e la trasposizione,
+cioè la rotazione, oltre che metodi per resettare alle impostazioni originali:
+
+\begin{lstlisting}
+setResize(int width, int height)
+resetResize()
+rotateClockwise()
+rotateCounterClockwise()
+resetRotate()
+\end{lstlisting}
+
+La classe viene quindi usata prima e dopo l'elaborazione tramite la classe \texttt{SlowMo}, 
+per estrarre i fotogrammi dal video di input e creare il video di output a partire dai
+fotogrammi elaborati.
 
 \section{Struttura applicazione}
 Gu
+
+
+FONTI (METTERE IN BIBLIOGRAFIA)
+
+https://ffmpeg.org/
+https://github.com/tanersener/ffmpeg-kit

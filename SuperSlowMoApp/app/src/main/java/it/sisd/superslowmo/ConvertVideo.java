@@ -8,7 +8,9 @@ import android.util.Size;
 
 import com.arthenica.ffmpegkit.FFmpegKit;
 import com.arthenica.ffmpegkit.FFmpegSession;
+import com.arthenica.ffmpegkit.FFmpegSessionCompleteCallback;
 import com.arthenica.ffmpegkit.ReturnCode;
+import com.arthenica.ffmpegkit.SessionState;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -63,7 +65,6 @@ public class ConvertVideo {
 
         String command = String.join(" ", src, params, getVFilters(), dest);
         FFmpegSession session = FFmpegKit.execute(command);
-
         if (log != null) {
             log.accept("Finished ffmpeg extractFrames session! Log: " + session.getOutput());
         }
@@ -78,7 +79,6 @@ public class ConvertVideo {
 
         String command = String.join(" ", src, params, getVFilters(), dest);
         FFmpegSession session = FFmpegKit.execute(command);
-
         if (log != null) {
             log.accept("Finished ffmpeg createVideo session! Log: " + session.getOutput());
         }

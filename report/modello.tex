@@ -324,9 +324,9 @@ Prima di tutto estrae i fotogrammi dal video tramite Ffmpeg, un diffuso programm
 conversione di file media. Carica poi i fotogrammi tramite un DataLoader:
 
 \begin{Python}
-    # transform trasforma le immagini in tensori
-    videoFrames = dataloader.Video(root=extractionPath, transform=transform)
-    videoFramesloader = torch.utils.data.DataLoader(videoFrames, batch_size=args.batch_size, shuffle=False)
+# transform trasforma le immagini in tensori
+videoFrames = dataloader.Video(root=extractionPath, transform=transform)
+videoFramesloader = torch.utils.data.DataLoader(videoFrames, batch_size=args.batch_size, shuffle=False)
 \end{Python}
 
 Successivamente, itera sui fotogrammi presi a coppie tramite il DataLoader, interpolando i 
@@ -590,7 +590,7 @@ for (Pair<Tensor, Tensor> sample : videoFrames) {
 Quindi: per ogni coppia di fotogrammi, viene fatta un'elaborazione preliminare con
 \texttt{flowCompCat}, e poi per ogni nuovo fotogramma la maggior parte del lavoro è svolto da
 \texttt{frameInterp}, che crea il tensore corrispondente alla nuova immagine; esso viene a sua
-volta convertito in immagine, scalato alla dimensione originale (per ovviare al già 
+volta convertito in Bitmap, scalato alla dimensione originale (per ovviare al già 
 citato ridimensionamento in multipli di 32 compiuto da Dataset), e salvato come immagine.
 
 \subsection{Limiti}
