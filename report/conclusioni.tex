@@ -7,4 +7,9 @@ Sintesi del progetto
 \section{Sviluppi futuri}
 \label{sec:sviluppi-futuri}
 
-Aumento risoluzione, forse anche tramite server
+Aumento risoluzione, forse anche tramite server.
+
+Sarebbe possibile svolgere l'interpolazione dei frame \emph{in parallelo} alla cattura del video?
+Ovvero: la cattura video salva ogni frame sequenzialmente, i frame vengono intercettati dalla CNN che svolge 
+l'interpolazione "on the fly" (molto complicato a fronte di un vantaggio minimo, contando che la cattura dura 
+pochi secondi, avrebbe senso per video molto lunghi ma in ogni caso il tempo di elaborazione è $\gg$ del tempo di cattura).

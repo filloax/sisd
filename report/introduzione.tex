@@ -3,7 +3,7 @@
 Questo progetto è ispirato ad un lavoro del 2018 intitolato 
 \textit{``Super SloMo: High Quality Estimation of Multiple Intermediate Frames for Video Interpolation''}
 (disponibile a \href{http://jianghz.me/projects/superslomo/}{questo link}).
-Tale studio illustra l'uso di reti neurali convoluzionali (CNN) per svolgere l'\textit{interpolazione dei frame} 
+Tale studio illustra l'uso di \textit{reti neurali convoluzionali} (CNN) per svolgere l'\textit{interpolazione dei frame} 
 in un video.
 
 Lo scopo del progetto era quello di realizzare un'applicazione Android che implementasse un sistema di slow motion 
@@ -39,6 +39,44 @@ implementazioni, estratto dal paper di riferimento.
     di riferimento. Fonte: https://arxiv.org/abs/1712.00080}
     \label{fig:confronto_interpolazione_frame}
 \end{figure}
+
+Introduciamo brevemente il concetto delle reti neurali convoluzionali, che comunque viene toccato molto marginalmente dal
+progetto (ci si limita ad utilizzare un modello prefatto).
+
+\section*{Reti neurali convoluzionali (CNN)}
+
+Una rete neurale può essere definita come una sequenza di \textit{layer}, ciascuno di essi formato da un'insieme di nodi (anche
+detti neuroni) interconnessi tra loro. Ogni nodo è rappresentato da un peso e riceve in input un valore da ciascun nodo del layer 
+precedente. Una funzione di attivazione determina lo stato di ciascun nodo: se il nodo è attivo, fornisce un input ai nodi del
+layer successivo. L'output di ciascun nodo dipende dagli input e dai pesi dei nodi precedenti.
+
+\begin{figure}[h!]
+    \includegraphics[width=0.5\textwidth]{img/rete_neurale.jpg}
+    \centering
+    \caption{Rappresentazione grafica di una rete neurale}
+    \label{fig:rete_neurale}
+\end{figure}
+
+Le \textit{reti neurali convoluzionali} (CNN) sono un particolare tipo di rete neurale che trova ampio utilizzo nell'ambito
+della computer vision e del processamento di immagini. Esse sono composte da tre tipi principali di layer:
+
+\begin{itemize}
+    \item Layer di Convoluzione: primo layer della rete. Può essere seguito da un layer di convoluzione o uno di pooling.
+    In questi layer viene applicata la convoluzione: un filtro 2D (detto \textbf{kernel}) viene applicato all'immagine di
+    input
+    \item Layer di Pooling: layer intermedio (può non essere presente)
+    \item Layer Fully-Connected (FC): layer finale, è l'unico in cui ciascun nodo è collegato direttamente ai nodi del
+    layer precedente
+\end{itemize}
+
+Nei layer iniziali della rete viene applicata la convoluzione: un filtro 2D (\textbf{kernel}) viene passato sull'immagine
+di input. L'output è di dimensioni minori dell'input e viene detto anche \textit{feature map}, poiché indica la distribuzione
+di determinate caratteristiche nell'immagine. Le caratteristiche estratte sono strettamente legate al tipo di filtro utilizzato.
+I layer di pooling svolgono una funzione di aggregazione dell'input, approssimando un insieme di valori adiacenti della feature
+map ad un singolo valore (utilizzando un altro tipo di kernel).
+
+La rete quindi diminuisce progressivamente le dimensioni dell'immagine di input, arrivando ad esprimere in output, ad esempio,
+una probabilità. Tipicamente infatti, le CNN vengono utilizzate per problemi di classificazioni di immagini.
 
 Nel successivo capitolo si procede a descrivere brevemente il modello Pytorch utilizzato, alcune sue caratteristiche
 e il processo di conversione necessario per l'utilizzo su dispositivo Android.
