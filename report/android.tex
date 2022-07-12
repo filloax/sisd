@@ -170,11 +170,11 @@ del modello.
 
 L'applicazione necessita di un metodo per convertire i video in immagini contenenti i
 fotogrammi, e viceversa convertire le immagini in video una volta finita l'elaborazione.
-Si è scelto di usare Ffmpeg, la più diffusa software suite di elaborazione media.
+Si è scelto di usare FFmpeg, la più diffusa software suite di elaborazione media.
 
 \subsubsection*{FFmpeg}
 
-FFmpeg è il framework multimedia più diffuso sul mercato. Offre la possibilità di convertire, 
+FFmpeg\cite{sito_ffmpeg} è il framework multimedia più diffuso sul mercato. Offre la possibilità di convertire, 
 registrare, e riprodurre la maggior parte dei formati video e audio. In particolare, 
 \textbf{FFmpeg} vero e proprio è la suite di conversione, encoding, e decoding di file
 multimediali, nella forma di un programma da linea di comando estremamente flessibile.
@@ -210,7 +210,7 @@ per secondo dell'originale, e durata quindi raddoppiata.
 
 \subsubsection*{FFmpegKit}
 
-Per poter usare FFmpeg su Android, è stata usata la libreria FFmpegKit, che include strumenti
+Per poter usare FFmpeg su Android, è stata usata la libreria FFmpegKit\cite{git_ffmpegkit}, che include strumenti
 per eseguire FFmpeg su Android, insieme ad altre piattaforme: iOS, macOS, tvOS, Flutter, e 
 React Native. Offre diversi script per fare build delle librerie di FFmpeg, e una libreria 
 wrapper per lanciare i comandi di FFmpeg e FFprobe all'interno delle applicazioni. 
@@ -421,9 +421,15 @@ consentire a quest'ultimo di pubblicare i propri progressi al termine dell'elabo
 \end{lstlisting}
 
 
---- inserire magari qualche screen dell'applicazione per mostrare i punti chiave ---
+\begin{figure}[p]
+    \centering
+    \includegraphics[width=\textwidth]{img/screenshot_app.jpg}
+    \caption{Activity dell'app. A sinistra: CatturaActivity, a destra: SlomoActivity,
+    al centro: MainActivity.}
+\end{figure}
 
-FONTI (METTERE IN BIBLIOGRAFIA)
-
-https://ffmpeg.org/
-https://github.com/tanersener/ffmpeg-kit
+\begin{figure}[p]
+    \centering
+    \includegraphics[width=0.4\textwidth]{img/screenshot_notifica.jpg}
+    \caption{Notifica di progresso dell'elaborazione}
+\end{figure}

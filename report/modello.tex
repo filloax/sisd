@@ -38,7 +38,7 @@ Il workflow del framework si può riassumere in questo modo:
     \item Training, ripetendo delle iterazioni sul dataloader nelle quali si computa
     l'errore di predizione, e in base a esso si calcolano i nuovi pesi, per poi verificare
     il miglioramento dell'accuratezza tramite il dataset di test.
-    \item Uso dei modelli così allenati caricando i pesi e usando la stessa classe Module
+    \item Uso dei modelli così addestrati caricando i pesi e usando la stessa classe Module
     creata in precedenza, in modalità \emph{no\_grad} per differenziare dallo stato di
     training (impedendo così la modifica dei pesi), e ottenendo così delle predizioni.
 \end{itemize}
@@ -49,7 +49,7 @@ progetto, permette di convertire immagini in tensori e vice versa.
 
 \subsection{PyTorch Mobile}
 
-PyTorch Mobile è un runtime per PyTorch su dispositivi mobile e embedded, al momento in
+PyTorch Mobile\cite{sito_pytorch_mobile}\cite{doc_pytorch_mobile} è un runtime per PyTorch su dispositivi mobile e embedded, al momento in
 beta. Supporta i sistemi operativi iOS, Android, e Linux, offrendo API per le operazioni
 di uso comune necessarie a integrare le reti neurali in questo genere di applicazioni,
 oltre a supportare operazioni di ottimizzazione come la quantizzazione. Offre anche 
@@ -57,17 +57,17 @@ un interprete ottimizzato per PyTorch su Android e iOS, che compila selettivamen
 le componenti del framework necessarie all'app.
 
 Si può anche sfruttare TorchScript per migliorare e facilitare l'ottimizzazione di modelli
-a dispositivi mobile. TorchScript è un linguaggio creato ad hoc per PyTorch, ed è una 
-sottoparte del linguaggio Python, in particolare delle parti necessarie a rappresentare reti 
+a dispositivi mobile. TorchScript è un linguaggio creato ad hoc per PyTorch, ed è un sottoinsieme
+del linguaggio Python, in particolare delle parti necessarie a rappresentare reti 
 neurali. Inoltre, TorchScript ha tipi delle variabili statici, a differenza di Python.
 
 PyTorch offre funzioni per compilare codice Python in TorchScript, sottostando a certi
 vincoli. Per esempio, \texttt{torch.jit.script} permette di trasformare \texttt{Module}
 o funzioni in \texttt{ScriptModule} e \texttt{ScriptFunction}, delle copie dell'originale
-convertite in TorchScript, che poi potranno essere salvati tramite \texttt{torch.jit.save}
+convertite in TorchScript, che poi potranno essere salvate tramite \texttt{torch.jit.save}
 su file. In particolare, gli \texttt{ScriptModule} avranno gli stessi parametri del modello
 originale, che verranno salvati su file insieme al modello, permettendo quindi di caricare
-successivamente sia la logica che i parametri allenati del modello dallo stesso file.
+successivamente sia la logica che i parametri addestrati del modello dallo stesso file.
 
 PyTorch Mobile sfrutta TorschScript per permettere di caricare il modello sul framework 
 e nel linguaggio di destinazione (per esempio, Java o Kotlin per Android). Questo permette
@@ -93,7 +93,7 @@ essi vengono salvati tramite la funzione interna alla classe \texttt{ScriptModul
 invece di .pt. Nella versione attuale di PyTorch Mobile, esistono due versioni diverse della
 libreria (per Android, \emph{org.pytorch.pytorch\_android} e 
 \emph{org.pytorch.pytorch\_android\_lite}): ogni versione è in grado di caricare solo i file
-TorchScript salvati dalla funzione corrispondente, e non l'altra; questo al momento offre
+TorchScript salvati dalla funzione corrispondente, e non dall'altra; questo al momento offre
 problemi per la conversione di funzioni convertite a \texttt{ScriptFunction}, che attualmente
 non dispone di un metodo \emph{\_save\_for\_lite\_interpreter}, impedendo quindi di caricare 
 funzioni convertite a TorchScript in un contesto \emph{lite}. Quindi, l'unico modo di usare
@@ -103,7 +103,7 @@ attuale, è usarle all'interno di un \texttt{Module} di rete neurale.
 \begin{figure}[!bh]
     \centering
     \includegraphics[width=0.7\textwidth]{img/pytorch_mobile_workflow.jpg}
-    \caption{Fonte dell'immagine: https://pytorch.org/mobile/home/}
+    \caption{Fonte dell'immagine: https://pytorch.org/mobile/home/ \cite{sito_pytorch_mobile}}
     \label{fig:workflow_pytorch_mobile}
 \end{figure}
 
@@ -122,7 +122,7 @@ reimplementarle.
 \subsubsection*{Dataset}
 \label{sec:dataset}
 
-In questo progetto è stato scelto di reimplementare la classe Pytorch Dataset, 
+In questo progetto è stato scelto di reimplementare la classe PyTorch \texttt{Dataset}, 
 nel caso specifico di interesse al progetto, vale a dire un set di immagini rappresentanti
 fotogrammi di un video, da caricare a due a due in ogni iterazione per interpolare i fotogrammi
 tra esse. Questo permette di riprodurre il comportamento dell'implementazione originale di
@@ -137,7 +137,7 @@ public interface IDataset<T> extends Iterable<T> {
     public abstract int len();
 }
 
-public class VideoDataset<T> extends Dataset<Pair<T, T>> {
+public class VideoDataset<T> implements Dataset<Pair<T, T>> {
     private IImageLoader imageLoader;
     private String root;
     private String[] framePaths;
@@ -177,12 +177,13 @@ videoFrames = VideoDataset.withRootPath(
 );
 \end{lstlisting}
 
-Ultimo punto importante riguardo a questa classe: in PyTorch, Dataset per video ridimensiona
-le immagini caricate in modo che abbiamo valori di dimensione multipli di 32: per esempio, 
-da (320, 180) a (320, 160). È stato riprodotto questo comportamento in VideoDataset, ed è stato
-rilevante in fase di conversione del modello a mobile (vedi \ref{sec:adattamento-modello}).
+Un ultimo punto importante riguardo a questa classe: in PyTorch, \texttt{Dataset} per video
+ridimensiona le immagini caricate in modo che abbiamo valori di dimensione multipli di 32: per
+esempio, da (320, 180) a (320, 160). È stato riprodotto questo comportamento in VideoDataset, ed
+è stato rilevante in fase di conversione del modello a mobile (vedi 
+\ref{sec:adattamento-modello}).
 
-\subsubsection*{Concatenazione Tensori}
+\subsubsection*{Concatenazione di Tensori}
 
 Mancando le funzioni di PyTorch per svolgere operazioni tra Tensori, in particolare
 \texttt{torch.cat}, in una prima versione del progetto era stato necessario reimplementare
@@ -236,8 +237,8 @@ stato necessario convertire il codice di Python del modello originale in
 Torchscript. Come spiegato nella sezione precedente, PyTorch Mobile è pensato
 per scrivere la maggior parte della componente logica del modello direttamente in Python, 
 per poi convertire la classe che estende \texttt{nn.Module} in Torchscript e esportarla nel
-dispositivo mobile, soprattutto non disponendo l'API Java di diverse delle funzioni necessarie
-per il funzionamento del sistema. 
+dispositivo mobile; questo soprattutto a causa dell'assenza di diverse delle funzioni necessarie
+per il funzionamento del sistema dall'API Java.
 
 \subsection{Struttura del sistema di partenza}
 
@@ -255,8 +256,8 @@ ArbTimeFlowIntrp = model.UNet(20, 5)
 flowBackWarp = model.backWarp(videoFrames.dim[0], videoFrames.dim[1], device)
 \end{Python}
 
-Si noti come \texttt{flowBackWarp} è creata con la stessa dimensione dei fotogrammi in 
-ingresso. Queste sono istanze di classi Module complesse così definite:
+Si noti come \texttt{flowBackWarp} viene creata con la stessa dimensione dei fotogrammi in 
+ingresso. Queste sono istanze di classi \texttt{nn.Module} complesse così definite:
 
 \begin{Python}
 class UNet(nn.Module):
@@ -336,10 +337,11 @@ up:
     This is used in the UNet Class to create a UNet like NN architecture.
 \end{verbatim}
 
-\subsubsection*{Valutazione}
+\subsubsection*{Interpolazione}
 
-Il codice per la valutazione è contenuto nello script python \emph{video\_to\_slomo.py}.
-Prima di tutto estrae i fotogrammi dal video tramite Ffmpeg, un diffuso programma per la 
+Il codice per l'interpolazione dei fotogrammi è contenuto nello script python 
+\emph{video\_to\_slomo.py}.
+Prima di tutto estrae i fotogrammi dal video tramite FFmpeg, un famoso programma per la 
 conversione di file media. Carica poi i fotogrammi tramite un DataLoader:
 
 \begin{Python}
@@ -348,7 +350,7 @@ videoFrames = dataloader.Video(root=extractionPath, transform=transform)
 videoFramesloader = torch.utils.data.DataLoader(videoFrames, batch_size=args.batch_size, shuffle=False)
 \end{Python}
 
-Successivamente, itera sui fotogrammi presi a coppie tramite il DataLoader, interpolando i 
+Successivamente, itera sui fotogrammi presi a coppie tramite il \texttt{DataLoader}, interpolando i 
 fotogrammi intermedi tramite i modelli creati in precedenza:
 
 \begin{Python}
@@ -405,7 +407,7 @@ L'operazione è piuttosto complessa, e la quantità di fotogrammi generata dipen
 di fotogrammi del video finale a partire dall'originale. Per esempio, partendo da un video a 
 30 fotogrammi per secondo, uno scale factor di 3 porterebbe a un video finale di 90 fotogrammi 
 per secondo con la stessa durata, oppure ad un video finale di 30 fotogrammi per secondo ma 
-lungo $\frac{1}{3}$ del video originale.
+lungo $\frac{1}{3}$ del video originale, in base al numero di fotogrammi per secondo desiderato.
 
 \subsection{Adattamento}
 
@@ -417,15 +419,15 @@ ancora in sviluppo di PyTorch Mobile.
 \subsubsection*{Adattamento del modello}
 \label{sec:adattamento-modello}
 
-Il modello è stato, come da workflow standard di PyTorch Mobile, convertito in TorchScript e 
-salvato su file per poterlo successivamente usare nell'applicazione Android. Una prima versione
+Il modello è stato convertito in TorchScript e salvato su file per poterlo successivamente usare
+nell'applicazione Android, come da workflow standard di PyTorch Mobile. Una prima versione
 si limitava a creare istanze delle classi del sistema, convertirle in TorchScript dopo aver 
-caricato i dati del modello pre-allenato disponibile sul repository del sistema originale, 
+caricato i dati del modello pre-addestrato disponibile sul repository del sistema originale, 
 e salvarle su file, in questo modo:
 
 \begin{Python}
 # ckpt: percorso file di checkpoint contenente 
-# i parametri post-training
+# i parametri di training
 dict1 = torch.load(ckpt, map_location='cpu')
 flowComp = model.UNet(6, 4)
 flowComp.load_state_dict(dict1['state_dictFC'])
@@ -436,28 +438,29 @@ flowComp_opt._save_for_lite_interpreter('flowComp.ptl')
 
 Il procedimento ha funzionato, dopo delle minori correzioni necessarie data la staticità
 dei tipi di TorschScript a differenza di Python, che portavano al fallimento della compilazione
-a causa di righe come
+a causa di linee di codice come
 
 \begin{Python}
 x = F.interpolate(x, scale_factor=2, mode='bilinear')
 \end{Python}
 
 dentro al modulo \texttt{up}, dove \emph{scale\_factor} richiede un dato di tipo \emph{float}, 
-ma riceve un \emph{int}, cioè 2, come valore. Ovviamente questa riga è perfettamente valida in 
+ma riceve un \emph{int}, cioè 2, come valore. Ovviamente questa linea è perfettamente valida in 
 Python, che non differenzia neanche interi o float oltre a non avere questo genere di controlli
 di tipo, ma non in TorschScript che appunto è un linguaggio a tipi statici.
 
 Questa prima versione della conversione, però, per i problemi citati precedentemente nell'uso 
 di funzioni di PyTorch al di fuori di un modulo rendeva difficile implementare la parte di 
 valutazione che usava i modelli senza reimplementare diverse parti della libreria di PyTorch: 
-quindi, si ha optato per un approccio più vicino all'uso inteso del runtime Mobile, cioè di 
+quindi, si è optato per un approccio più vicino all'uso inteso del runtime Mobile, cioè di 
 includere quanto possibile delle parti di codice riguardanti PyTorch all'interno dei moduli. 
 
 Sono state quindi create due classi wrapper: \texttt{FlowCompCat}, che incapsula il codice
-di valutazione eseguito prima di iterare su ogni fotogramma intermedio da interpolare, e 
-\texttt{FrameInterpolation}, che genera i fotogrammi intermedi (corrispondente al codice
-che segue \texttt{for intermediateIndex in range(1, args.sf)} nel codice di valutazione
-originale).
+di valutazione eseguito prima di iterare su ogni fotogramma intermedio da interpolare, in
+particolare la funzione \texttt{torch.cat} e lo \emph{splicing} dei tensori, che altrimenti
+sarebbero dovuti essere reimplementati; e \texttt{FrameInterpolation}, che genera i fotogrammi 
+intermedi (corrispondente al codice interno al loop \texttt{for intermediateIndex in 
+range(1, args.sf)} nel codice di interpolazione originale).
 
 \begin{Python}
 class FlowCompCat(nn.Module):
@@ -512,9 +515,10 @@ di risoluzioni: questo mette già un primo vincolo all'applicazione mobile non p
 nel modello originale, vale a dire la possibilità di scegliere solo tra una limitata gamma di
 risoluzioni di output.
 
-Inoltre, dato il funzionamento dei Dataset, le immagini in elaborazione vengono ridimensionate 
-a dimensioni multiple di 32 (vedi \ref{sec:dataset}); quindi le dimensioni preimpostate usate
-per la generazione dei moduli da caricare saranno assegnate a uno di questi valori.
+Inoltre, dato il funzionamento dei \texttt{Dataset}, le immagini in elaborazione vengono 
+ridimensionate a dimensioni multiple di 32 (vedi \ref{sec:dataset}); quindi le dimensioni 
+preimpostate usate per la generazione dei moduli da caricare saranno assegnate a 
+un valore compatibile con questo vincolo).
 
 \begin{Python}
 flowBackwarpResolutions = [
@@ -531,11 +535,12 @@ for res in flowBackwarpResolutions:
     flowBackWarps[key].load_state_dict(dict1['state_dictAT'])
 \end{Python}
 
-\subsection{Valutazione}
+\subsection{Adattamento dell'interpolazione}
 
 La valutazione, essendo eseguita dall'applicazione stessa, è realizzata in Java
-tramite le API di Android e PyTorch. Viene usata la classe VideoDataset mostrata in precedenza
-(vedi \ref{sec:dataset}) per emulare il caricamento dei fotogrammi dello script originale:
+tramite le API di Android e PyTorch. Viene usata la classe \texttt{VideoDataset} mostrata in
+precedenza (vedi \ref{sec:dataset}) per emulare il caricamento dei fotogrammi dello script
+originale:
 
 \begin{lstlisting}
 videoFrames = VideoDataset.withRootPath(extractedFramesDir.getAbsolutePath(), bitmap ->
@@ -548,11 +553,11 @@ videoFrames = VideoDataset.withRootPath(extractedFramesDir.getAbsolutePath(), bi
 
 È poi stata realizzata una classe \texttt{SlowMo}, contenente il \emph{core business} della
 valutazione. Riceve dall'esterno il dataset, i moduli caricati da file, lo scale factor, 
-un oggetto \emph{ImageWriter} e parametri opzionali come un handler degli aggiornamenti 
+un oggetto \texttt{ImageWriter} e parametri opzionali come un handler per gli aggiornamenti 
 del progresso dell'operazione (per poterli mostrare sull'app) ed eventuali funzioni di log.
 
-Anche ImageWriter è una classe dell'applicazione, usata per sostituire la creazione di file di
-fotogrammi con eventuali funzioni mock, nel caso sia necessario in fase di test.
+Anche \texttt{ImageWriter} è una classe dell'applicazione, usata per sostituire la creazione di
+file di fotogrammi con eventuali funzioni mock, nel caso sia necessario in fase di test.
 
 \begin{lstlisting}
 slowMoEvaluator = new SlowMo()
@@ -579,7 +584,6 @@ for (Pair<Tensor, Tensor> sample : videoFrames) {
 
     // Save reference frames as image
     resizeAndSaveFrame(frameCounter, sample.first);
-
     frameCounter++;
 
     for (int intermediateIndex = 1; intermediateIndex < scaleFactor; intermediateIndex ++) {
@@ -597,7 +601,6 @@ for (Pair<Tensor, Tensor> sample : videoFrames) {
 
         // Save interpolated frame as image
         resizeAndSaveFrame( frameCounter, Ft_p);
-
         frameCounter++;
     }
 
@@ -626,9 +629,3 @@ rallentamento del 50\%.
 
 Potrebbero essere svolte ulteriori ottimizzazioni, che saranno trattate successivamente 
 in questa relazione (vedi \ref{sec:sviluppi-futuri}).
-
-FONTI, METTERE POI IN BIBLIOGRAFIA
-
-https://pytorch.org/javadoc/1.9.0/
-
-https://pytorch.org/mobile/home/

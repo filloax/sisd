@@ -15,11 +15,22 @@ del modello, che consente all'utente di utilizzare altre applicazioni o di blocc
 \section{Sviluppi futuri}
 \label{sec:sviluppi-futuri}
 
-Aumento risoluzione, forse anche tramite server.
+Data la scarsa risoluzione massima che può gestire l'applicazione al momento, la priorità
+principale sta nell'aumento della risoluzione gestibile. Dato che, come già detto, il sistema è
+di natura pesante e ulteriori ottimizzazioni sarebbero difficili e probabilmente poco utili, 
+oltre a rischiare una grande perdita di qualità, un altro approccio possibile potrebbe essere
+il trasferimento dell'elaborazione su un server, al quale l'app si connetterebbe per caricare i
+video di input e dal quale riceverebbe il video elaborato. Questo approccio è usato da altre app
+che offrono servizi di elaborazione immagini tramite reti neurali, specie quando questa 
+elaborazione ha come risultato altre immagini.
 
-Aggiungere un collegamento diretto tra cattura del video ed elaborazione, senza doverlo riselezionare dalla galleria.
+Si potrebbero anche aggiungere, con meno priorità, ulteriori funzionalità: per esempio, un
+collegamento diretto tra cattura video e elaborazione degli stessi, permettendo un workflow più
+pulito da cattura ad elaborazione, evitando di dover cercare il video appena registrato nella
+selezione dei file.
 
-Sarebbe possibile svolgere l'interpolazione dei frame \emph{in parallelo} alla cattura del video?
-Ovvero: la cattura video salva ogni frame sequenzialmente, i frame vengono intercettati dalla CNN che svolge 
-l'interpolazione "on the fly" (molto complicato a fronte di un vantaggio minimo, contando che la cattura dura 
-pochi secondi, avrebbe senso per video molto lunghi ma in ogni caso il tempo di elaborazione è $\gg$ del tempo di cattura).
+Inoltre, nel caso in cui si riuscisse ad ottenere un'ottimizzazione molto migliore, sarebbe 
+possibile elaborare i video \emph{on the fly}, in tempo reale durante la cattura; con i tempi
+attuali è impossibile, e molto lontano dall'essere realizzabile, ma non si può escludere che un
+modello futuro, o in alternativa una connessione in streaming con un server sufficientemente
+potente, potrebbero portare a questo risultato.
