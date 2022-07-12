@@ -2,12 +2,22 @@
 
 \section{Conclusioni}
 
-Sintesi del progetto
+I maggiori punti di criticità del progetto risiedevano, come prevedibile, nell'utilizzo della rete neurale su dispositivo
+Android. La conversione del modello Pytorch originale ad un modello utilizzabile su Android ha richiesto la reimplementazione
+di alcune componenti software data la complessità del modello.
+
+Altro punto critico è stata la coordinazione e comunicazione tra i diversi processi in gioco nell'applicazione, dovendo
+integrare la valutazione eseguita dalla rete neurale con un'interfaccia grafica il più possibile user-friendly.
+Come accennato brevemente, i test svolti sull'applicazione hanno dato luogo a tempi di elaborazione di 5 minuti per 
+video di durata pari a 2 secondi. Questo tempo di elaborazione viene reso più tollerabile dall'esecuzione in background
+del modello, che consente all'utente di utilizzare altre applicazioni o di bloccare il dispositivo nell'attesa.
 
 \section{Sviluppi futuri}
 \label{sec:sviluppi-futuri}
 
 Aumento risoluzione, forse anche tramite server.
+
+Aggiungere un collegamento diretto tra cattura del video ed elaborazione, senza doverlo riselezionare dalla galleria.
 
 Sarebbe possibile svolgere l'interpolazione dei frame \emph{in parallelo} alla cattura del video?
 Ovvero: la cattura video salva ogni frame sequenzialmente, i frame vengono intercettati dalla CNN che svolge 

@@ -96,7 +96,9 @@ L'elaborazione del video, come già anticipato, viene affidata al modello Pytorc
 L'elaborazione è computazionalmente pesante e può richiedere tempi di esecuzione di diversi minuti: nei test svolti,
 un video di 2 secondi impiegava circa 5 minuti per essere elaborato.
 Per questo motivo si è deciso di delegare ad un \textit{Worker} lo svolgimento dell'elaborazione. Ciò consente di disaccoppiare
-l'elaborazione dal ciclo vitale dell'activity, eseguendola in parallelo.
+l'elaborazione dal ciclo vitale dell'activity, eseguendola in parallelo. In questo modo è possibile consentire
+all'elaborazione di proseguire anche quando l'utente porta l'activity in background per utilizzare altre applicazioni.
+Questo aiuta a mitigare i tempi di attesa.
 
 \subsubsection*{WorkManager}
 
