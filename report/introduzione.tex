@@ -57,6 +57,11 @@ layer successivo. L'output di ciascun nodo dipende dagli input e dai pesi dei no
     \label{fig:rete_neurale}
 \end{figure}
 
+I pesi dei nodi della rete vengono assegnati secondo un processo chiamato \emph{addestramento}: vengono dati in pasto alla
+rete degli input preselezionati, lasciando che i pesi iniziali (con valori casuali) forniscano l'output.
+I valori dei pesi vengono poi aggiustati con l'obiettivo di minimizzare la differenza tra l'output fornito dalla rete e
+l'output atteso, secondo un processo chiamato \emph{backpropagation}.
+
 Le \textit{reti neurali convoluzionali} (CNN) sono un particolare tipo di rete neurale che trova ampio utilizzo nell'ambito
 della computer vision e del processamento di immagini. Esse sono composte da tre tipi principali di layer:
 
@@ -76,7 +81,9 @@ I layer di pooling svolgono una funzione di aggregazione dell'input, approssiman
 map ad un singolo valore (utilizzando un altro tipo di kernel).
 
 La rete quindi diminuisce progressivamente le dimensioni dell'immagine di input, arrivando ad esprimere in output, ad esempio,
-una probabilità. Tipicamente infatti, le CNN vengono utilizzate per problemi di classificazioni di immagini.
+una probabilità. Spesso infatti, le CNN vengono utilizzate per problemi di classificazioni di immagini.
+Tuttavia, come vedremo brevemente, il modello che abbiamo qui utilizzato risulta più complicato e produce un diverso tipo di 
+output, non essendo adibito alla classificazione di immagini.
 
 Nel successivo capitolo si procede a descrivere brevemente il modello Pytorch utilizzato, alcune sue caratteristiche
 e il processo di conversione necessario per l'utilizzo su dispositivo Android.

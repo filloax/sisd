@@ -2,7 +2,23 @@
 
 \section{Spiegazione rapida del modello originale}
 
-Gu
+Il modello esposto nel paper di riferimento è in realtà la combinazione di due CNN. Queste due reti vengono denominate
+``Flow computation'' e ``Flow interpolation''. Entrambe le reti sono basate su un'architettura detta \emph{U-Net}, che
+descrive una CNN formata da un encoder ed un decoder, entrambi composti da una gerarchia di diversi layer convoluzionali
+e di pooling.
+Entrambe le U-Net utilizzate hanno un encoder di 6 layer ed un decoder di 5 layer.
+
+\begin{figure}[h!]
+    \includegraphics[width=0.7\textwidth]{img/architettura_slomo.jpg}
+    \centering
+    \caption{Illustrazione dell'architettura delle CNN Flow computation e Flow interpolation. Fonte: https://arxiv.org/abs/1712.00080}
+    \label{fig:architettura_slomo}
+\end{figure}
+
+Date due immagini $I_0$ e $I_1$ in input, l'obiettivo della rete è di stimare quale dovrebbe essere il flusso ottico tra 
+il frame intermedio $I_t$ (non ancora generato) e le due immagini $I_0$ e $I_1$. Una volta completata la stima,
+l'interpolazione (quindi la sintesi del nuovo frame) viene effettuata sulla base del flusso ottico mediante metodi 
+algebrici descritti nel paper.
 
 \section{PyTorch e PyTorch Mobile}
 
