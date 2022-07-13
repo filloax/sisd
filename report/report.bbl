@@ -31,14 +31,14 @@ H.~Jiang, D.~Sun, V.~Jampani, M.-H. Yang, E.~Learned-Miller, and J.~Kautz,
 
 \bibitem{git_superslowmo}
 \BIBentryALTinterwordspacing
-------. Repository di {S}uper-{S}lo{M}o su {G}ithub. [Online]. Available:
-  \url{https://github.com/avinashpaliwal/Super-SloMo}
+A.~Paliwal. Repository non ufficiale di {S}uper-{S}lo{M}o su {G}ithub.
+  [Online]. Available: \url{https://github.com/avinashpaliwal/Super-SloMo}
 \BIBentrySTDinterwordspacing
 
 \bibitem{git_progetto}
 \BIBentryALTinterwordspacing
-F.~L. e~Guglielmo~Palaferri. Repository del progetto su {G}ithub. [Online].
-  Available: \url{https://github.com/filloax/sisd/}
+{Filippo Lenzi e Guglielmo Palaferri}. Repository del progetto su {G}ithub.
+  [Online]. Available: \url{https://github.com/filloax/sisd/}
 \BIBentrySTDinterwordspacing
 
 \bibitem{sito_pytorch_mobile}
@@ -51,6 +51,12 @@ Facebook. Sito di {P}y{T}orch {M}obile. [Online]. Available:
 \BIBentryALTinterwordspacing
 ------. Documentazione di {P}y{T}orch {M}obile. [Online]. Available:
   \url{https://pytorch.org/javadoc/1.9.0/}
+\BIBentrySTDinterwordspacing
+
+\bibitem{android_lifecycle}
+\BIBentryALTinterwordspacing
+{Android Developers}. Guida all'activity lifecycle. [Online]. Available:
+  \url{https://developer.android.com/guide/components/activities/activity-lifecycle}
 \BIBentrySTDinterwordspacing
 
 \bibitem{sito_ffmpeg}

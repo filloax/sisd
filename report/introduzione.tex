@@ -6,11 +6,12 @@ Tale studio illustra l'uso di \textit{reti neurali convoluzionali} (CNN) per svo
 in un video.
 
 Lo scopo del progetto era quello di realizzare un'applicazione Android che implementasse un sistema di slow motion 
-"artificiale" tramite le tecniche esposte nell'articolo sopra citato. In particolare, è stata utilizzata 
-un'implementazione del modello in Pytorch disponibile su GitHub\cite{git_superslowmo}, la quale è stata adattata per l'utilizzo su un 
-dispositivo Android.
+``artificiale" tramite le tecniche esposte nell'articolo sopra citato. In particolare, è stata utilizzata 
+un'implementazione del modello in Pytorch disponibile su GitHub \cite{git_superslowmo}, la quale è stata adattata per l'utilizzo su un 
+dispositivo Android. L'implementazione utilizzata non è ufficiale, ma è la più popolare tra quelle disponibili; gli autori del
+paper non hanno rilasciato alcuna implementazione ufficiale.
 
-Il codice di questo progetto è disponibile su GitHub\cite{git_progetto}.
+Il codice di questo progetto è disponibile su GitHub \cite{git_progetto}.
 
 \section*{Interpolazione dei frame}
 
@@ -20,7 +21,7 @@ raggiungere anche decine di migliaia di fps). In questo modo è possibile poi ra
 un framerate più basso (tipicamente 25-30 fps) e ottenendo quindi un effetto slow-motion.
 
 Nel contesto dei dispositivi embedded, tuttavia, può essere impossibile equipaggiare telecamere di questo tipo (per via
-dei costi o delle dimensioni). In questi casi risulta utile disporre di strategie alternative, come l'interpolazione dei 
+dei costi, delle dimensioni, o dei consumi di potenza). In questi casi risulta utile disporre di strategie alternative, come l'interpolazione dei 
 frame. Questa tecnica, applicata ad un video pre-registrato, mira a generare artificialmente uno o più fotogrammi intermedi 
 a partire da due fotogrammi consecutivi, al fine di aumentare il framerate del video e consentire di riprodurlo in slow-motion
 successivamente mantenendone la fluidità. Ovviamente, questo metodo garantisce una precisione molto inferiore rispetto
@@ -37,7 +38,7 @@ implementazioni, estratto dal paper di riferimento.
     \includegraphics[width=0.7\textwidth]{img/confronto_interpolazione_frame.jpg}
     \centering
     \caption{(a) frame intermedio originale; risultati di interpolazione con: (b-e) diverse implementazioni, (f) implementazione
-    di riferimento. Fonte: https://arxiv.org/abs/1712.00080}
+    di riferimento. Fonte: \cite{paper_superslomo}}
     \label{fig:confronto_interpolazione_frame}
 \end{figure}
 
