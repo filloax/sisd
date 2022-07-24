@@ -1,5 +1,7 @@
 package it.sisd.superslowmo;
 
+import static it.sisd.superslowmo.CatturaActivity.TAG;
+
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
@@ -104,30 +106,6 @@ public class SlomoActivity extends AppCompatActivity {
 
         loadedSlowMoEvaluator = true;
         chooseFileButton.setEnabled(true);
-        //createSlowMoEvaluator();
-    }
-
-    private void createSlowMoEvaluator() {
-        outString("Initializing SlowMo service...");
-
-        new Thread( () -> {
-            File workDir = new File(getApplicationContext().getFilesDir(), Constants.WORK_DIR);
-            if (!workDir.isDirectory())
-                workDir.mkdir();
-
-            Module flowCompCat = loadPytorchModule("flowCompCat.ptl");
-
-            /*
-            slowMoEvaluator = new SlowMo()
-                    .scaleFactor(scaleFactor)
-                    .flowCompCat(flowCompCat)
-                    .logOut(this::outString);
-            */
-
-            runOnUiThread(() -> chooseFileButton.setEnabled(true));
-            loadedSlowMoEvaluator = true;
-            outString("Loaded SlowMo service!");
-        }).start();
     }
 
     public void loadFileOnClick(View w) {
@@ -159,8 +137,10 @@ public class SlomoActivity extends AppCompatActivity {
             runningEval = true;
             cancelButton.setEnabled(true);
 
-            File selectedFileObj = new File(selectedFile);
-            String videoName = Utils.getFileNameWithoutExtension(selectedFileObj.getName());
+            //File selectedFileObj = new File(selectedFile);
+            //String videoName = Utils.getFileNameWithoutExtension(selectedFileObj.getName());
+            String videoName = "frames";
+            Log.d(TAG, "videoName= " + videoName);
 
             // Creates WorkRequest, passing videoName as input data
             slomoWorkRequest = new OneTimeWorkRequest.Builder(SlomoWorker.class).
@@ -271,7 +251,7 @@ public class SlomoActivity extends AppCompatActivity {
                         file.delete();
                     }
                 }
-                extractedFramesDir.mkdir();
+                extractedFramesDir.mkdirs();
 
                 convertedFramesDir = Paths.get(getApplicationContext()
                                 .getFilesDir().getAbsolutePath(),
@@ -282,7 +262,7 @@ public class SlomoActivity extends AppCompatActivity {
                         file.delete();
                     }
                 }
-                convertedFramesDir.mkdir();
+                convertedFramesDir.mkdirs();
 
                 // Extract frames from video
 
