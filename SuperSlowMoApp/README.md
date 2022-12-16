@@ -1,4 +1,4 @@
-#SuperSlowMoApp
+# SuperSlowMoApp
 
 SuperSlowMoApp is an Android application that allows you to create slow-motion videos without needing fancy cameras with high framerates. 
 
