@@ -318,26 +318,9 @@ public class SlomoActivity extends AppCompatActivity {
 
     }
 
-    private Module loadPytorchModule(String assetName) {
-        return LiteModuleLoader.loadModuleFromAsset(getAssets(), assetName);
-    }
-
     @SuppressLint("SetTextI18n")
     private void outString(String s) {
         TextView tv = (TextView) findViewById(R.id.textView);
         runOnUiThread(() -> tv.setText(s + "\n" + tv.getText()));
-    }
-
-    private static String getFrameInterpFileForResolution(int x, int y) {
-        // Sostituire con classe a parte? Per ora check hardcoded con uniche
-        // risoluzioni disponibili
-        String prefix = "frameInterp_";
-        if (x == 320 && y == 180) {
-            return prefix + "320x160.ptl";
-        } else if (x == 1280 && y == 720) {
-            return prefix + "1280x704.ptl";
-        }
-
-        throw new IllegalArgumentException("No frame interp model available for resolution " + x + "x" + y);
     }
 }
